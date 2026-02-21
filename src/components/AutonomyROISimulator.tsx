@@ -5,11 +5,11 @@ import { ChevronDown, RotateCcw, MessageCircle, Settings } from 'lucide-react'
 import { ROIInputs, ROIOutputs, ROICalculator } from '@/lib/roi-calculator'
 import { presets, getPresetByName } from '@/lib/presets'
 import { analytics } from '@/lib/analytics'
-import { StrategicHeroMetrics } from './StrategicHeroMetrics'
-import { StrategicInputPanel } from './StrategicInputPanel'
-import { StrategicChart } from './StrategicChart'
-import { FleetCounters } from './FleetCounters'
-import { GlobalNetworkMap } from './GlobalNetworkMap'
+import { CompactHeroMetrics } from './CompactHeroMetrics'
+import { CompactInputPanel } from './CompactInputPanel'
+import { CompactChart } from './CompactChart'
+import { CompactFleetCounters } from './CompactFleetCounters'
+import { CompactNetworkMap } from './CompactNetworkMap'
 import { InsightChips } from './InsightChips'
 import { DetailsSection } from './DetailsSection'
 import { StrategicMobileBottomSheet } from './StrategicMobileBottomSheet'
@@ -105,28 +105,23 @@ export function AutonomyROISimulator() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header - Robotaxi Style */}
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex justify-between items-center">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* Compact Header */}
+      <header className="bg-white border-b border-gray-200 flex-shrink-0">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-3">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                Autonomy Scale ROI
-              </h1>
-              <p className="text-sm text-gray-600 mt-1">
-                Strategic simulator for large autonomy investment returns
-              </p>
+              <h1 className="text-xl font-bold text-gray-900">Autonomy Scale ROI</h1>
+              <p className="text-xs text-gray-600">Strategic autonomy expansion simulator</p>
             </div>
             
-            {/* Desktop Controls */}
-            <div className="hidden lg:flex items-center space-x-3">
+            <div className="flex items-center space-x-3">
               {/* Presets Dropdown */}
               <div className="relative">
                 <select
                   value={selectedPreset}
                   onChange={(e) => handlePresetChange(e.target.value)}
-                  className="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2 pr-8 text-sm font-medium text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-1.5 pr-7 text-xs font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   {presets.map((preset) => (
                     <option key={preset.name} value={preset.name}>
@@ -134,86 +129,65 @@ export function AutonomyROISimulator() {
                     </option>
                   ))}
                 </select>
-                <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400 pointer-events-none" />
               </div>
-              
+
               {/* Reset Button */}
               <button
                 onClick={handleReset}
-                className="flex items-center space-x-1 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                className="flex items-center space-x-1 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-xs font-medium"
               >
-                <RotateCcw size={16} />
+                <RotateCcw size={12} />
                 <span>Reset</span>
-              </button>
-              
-              {/* Ask AI Button */}
-              <button
-                onClick={handleAIToggle}
-                className="flex items-center space-x-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg font-medium transition-colors"
-              >
-                <MessageCircle size={16} />
-                <span>Ask AI</span>
               </button>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      {/* Main Content - Single Screen Layout */}
+      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 overflow-hidden">
         {outputs && (
           <>
-            {/* Desktop Layout - 2 Column Strategic Control Room */}
-            <div className="hidden lg:grid lg:grid-cols-4 gap-8">
-              {/* Left Panel - Strategic Parameters (Sticky) */}
-              <div className="lg:col-span-1">
-                <StrategicInputPanel
+            {/* Desktop Layout - 3 Column No Scroll */}
+            <div className="hidden lg:grid lg:grid-cols-12 gap-4 h-full">
+              {/* Left Column - Parameters (25-30%) */}
+              <div className="lg:col-span-3">
+                <CompactInputPanel
                   inputs={inputs}
                   onInputChange={handleInputChange}
                 />
               </div>
 
-              {/* Right Panel - Strategic Dashboard */}
-              <div className="lg:col-span-3 space-y-4">
-                {/* Strategic Hero Metrics */}
-                <StrategicHeroMetrics outputs={outputs} inputs={inputs} />
+              {/* Right Side - Metrics + Chart/Map (70-75%) */}
+              <div className="lg:col-span-9 flex flex-col space-y-3">
+                {/* Top Row - Hero Metrics */}
+                <CompactHeroMetrics outputs={outputs} inputs={inputs} />
                 
-                {/* Strategic Chart - Dominant */}
-                <StrategicChart data={outputs.yearlyData} fixedInvestment={inputs.fixedInvestment} />
+                {/* Fleet Counters Strip */}
+                <CompactFleetCounters inputs={inputs} outputs={outputs} />
                 
-                {/* Fleet Scale Counters */}
-                <FleetCounters inputs={inputs} outputs={outputs} />
-                
-                {/* Global Network Map - Real Interactive Map */}
-                <GlobalNetworkMap inputs={inputs} outputs={outputs} selectedPreset={selectedPreset} />
-                
-                {/* Insight Chips */}
-                <InsightChips onChipClick={handleInsightClick} />
-                
-                {/* Details Section */}
-                <DetailsSection outputs={outputs} />
+                {/* Bottom Row - Chart and Map Side by Side */}
+                <div className="grid grid-cols-2 gap-4 flex-1">
+                  <CompactChart data={outputs.yearlyData} fixedInvestment={inputs.fixedInvestment} />
+                  <CompactNetworkMap inputs={inputs} outputs={outputs} selectedPreset={selectedPreset} />
+                </div>
               </div>
             </div>
 
-            {/* Mobile Layout - Strategic Control Room Order */}
+            {/* Mobile Layout - Stacked with Scrolling */}
             <div className="lg:hidden space-y-4">
               {/* Hero Metrics */}
-              <StrategicHeroMetrics outputs={outputs} inputs={inputs} />
+              <CompactHeroMetrics outputs={outputs} inputs={inputs} />
               
               {/* Chart */}
-              <StrategicChart data={outputs.yearlyData} fixedInvestment={inputs.fixedInvestment} />
+              <CompactChart data={outputs.yearlyData} fixedInvestment={inputs.fixedInvestment} />
+              
+              {/* Map */}
+              <CompactNetworkMap inputs={inputs} outputs={outputs} selectedPreset={selectedPreset} />
               
               {/* Fleet Counters */}
-              <FleetCounters inputs={inputs} outputs={outputs} />
-              
-              {/* Global Network Map - Real Interactive Map */}
-              <GlobalNetworkMap inputs={inputs} outputs={outputs} selectedPreset={selectedPreset} />
-              
-              {/* Insight Chips */}
-              <InsightChips onChipClick={handleInsightClick} />
-              
-              {/* Details Section */}
-              <DetailsSection outputs={outputs} />
+              <CompactFleetCounters inputs={inputs} outputs={outputs} />
             </div>
           </>
         )}
