@@ -23,14 +23,17 @@ interface AnalyticsPayload {
 class Analytics {
   private anonUserId: string | null = null
   private sessionId: string | null = null
+  private initialized: boolean = false
 
   constructor() {
-    if (typeof window !== 'undefined') {
-      this.initializeIds()
-    }
+    // Don't initialize immediately - wait for client-side mount
   }
 
   private initializeIds() {
+    if (typeof window === 'undefined' || this.initialized) {
+      return
+    }
+
     // Get or create anonymous user ID (persistent across sessions)
     this.anonUserId = localStorage.getItem('anon_user_id')
     if (!this.anonUserId) {
@@ -40,17 +43,25 @@ class Analytics {
 
     // Generate new session ID for each session
     this.sessionId = uuidv4()
+    this.initialized = true
     
-    // Log session start
-    this.logEvent('session_start', {
-      timestamp: new Date().toISOString(),
-      user_agent: navigator.userAgent,
-      referrer: document.referrer,
-      url: window.location.href
-    })
+    // Log session start after initialization
+    setTimeout(() => {
+      this.logEvent('session_start', {
+        timestamp: new Date().toISOString(),
+        user_agent: navigator.userAgent,
+        referrer: document.referrer,
+        url: window.location.href
+      })
+    }, 100)
   }
 
   async logEvent(eventName: AnalyticsEvent, payload: AnalyticsPayload = {}) {
+    // Initialize if not already done
+    if (!this.initialized) {
+      this.initializeIds()
+    }
+    
     if (!this.anonUserId || !this.sessionId) {
       console.warn('Analytics not initialized')
       return

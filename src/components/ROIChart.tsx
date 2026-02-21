@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
 import { YearlyData } from '@/lib/roi-calculator'
 
@@ -9,6 +10,18 @@ interface ROIChartProps {
 }
 
 export function ROIChart({ data, fixedInvestment }: ROIChartProps) {
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 1024)
+    }
+    
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
   // Prepare chart data - convert to billions for better readability
   const chartData = data.slice(0, 10).map(item => ({
     year: item.year,
@@ -27,17 +40,17 @@ export function ROIChart({ data, fixedInvestment }: ROIChartProps) {
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white p-4 border border-gray-200 rounded-lg shadow-lg">
-          <p className="font-medium text-gray-900">{`Year ${label}`}</p>
+        <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg text-sm">
+          <p className="font-medium text-gray-900">{`Y${label}`}</p>
           <div className="space-y-1 mt-2">
             <p className="text-blue-600">
-              <span className="font-medium">Cumulative Profit:</span> {formatBillions(payload[0].value)}
+              <span className="font-medium">Profit:</span> {formatBillions(payload[0].value)}
             </p>
             <p className="text-red-600">
-              <span className="font-medium">Fixed Investment:</span> {formatBillions(payload[1].value)}
+              <span className="font-medium">Investment:</span> {formatBillions(payload[1].value)}
             </p>
             <p className={`font-medium ${payload[0].value >= payload[1].value ? 'text-green-600' : 'text-red-600'}`}>
-              <span>Net Profit:</span> {formatBillions(payload[0].value - payload[1].value)}
+              <span>Net:</span> {formatBillions(payload[0].value - payload[1].value)}
             </p>
           </div>
         </div>
@@ -72,11 +85,13 @@ export function ROIChart({ data, fixedInvestment }: ROIChartProps) {
               stroke="#6b7280"
               fontSize={12}
               tickFormatter={(value) => `Y${value}`}
+              interval={isMobile ? 1 : 0}
             />
             <YAxis 
               stroke="#6b7280"
               fontSize={12}
               tickFormatter={formatBillions}
+              width={isMobile ? 50 : 60}
             />
             <Tooltip content={<CustomTooltip />} />
             

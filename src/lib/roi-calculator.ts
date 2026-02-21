@@ -37,6 +37,30 @@ export interface YearlyData {
 
 export class ROICalculator {
   static calculate(inputs: ROIInputs): ROIOutputs {
+    // Get simulation results
+    const simulationResult = this.simulate(inputs)
+    
+    // Calculate required cities for 5-year breakeven
+    const requiredCitiesFor5YearBreakeven = this.calculateRequiredCitiesForBreakeven(inputs, 5)
+    
+    // Calculate additional derived metrics
+    const year5Data = simulationResult.yearlyData[4] // Index 4 = Year 5
+    const year10Data = simulationResult.yearlyData[9] // Index 9 = Year 10
+
+    return {
+      breakEvenYear: simulationResult.breakEvenYear,
+      roiYear5: simulationResult.roiYear5,
+      roiYear10: simulationResult.roiYear10,
+      totalNetworkMiles5y: year5Data?.cumulativeMiles || 0,
+      totalNetworkMiles10y: year10Data?.cumulativeMiles || 0,
+      rdAmortizedPerMile5y: year5Data ? inputs.fixedInvestment * 1e9 / year5Data.cumulativeMiles : 0,
+      rdAmortizedPerMile10y: year10Data ? inputs.fixedInvestment * 1e9 / year10Data.cumulativeMiles : 0,
+      requiredCitiesFor5YearBreakeven,
+      yearlyData: simulationResult.yearlyData
+    }
+  }
+
+  private static simulate(inputs: ROIInputs) {
     const yearlyData: YearlyData[] = []
     let breakEvenYear: number | null = null
     
@@ -55,15 +79,10 @@ export class ROICalculator {
     const year10Data = yearlyData[9] // Index 9 = Year 10
 
     return {
+      yearlyData,
       breakEvenYear,
       roiYear5: year5Data?.roi || 0,
-      roiYear10: year10Data?.roi || 0,
-      totalNetworkMiles5y: year5Data?.cumulativeMiles || 0,
-      totalNetworkMiles10y: year10Data?.cumulativeMiles || 0,
-      rdAmortizedPerMile5y: year5Data ? inputs.fixedInvestment * 1e9 / year5Data.cumulativeMiles : 0,
-      rdAmortizedPerMile10y: year10Data ? inputs.fixedInvestment * 1e9 / year10Data.cumulativeMiles : 0,
-      requiredCitiesFor5YearBreakeven: this.calculateRequiredCitiesForBreakeven(inputs, 5),
-      yearlyData
+      roiYear10: year10Data?.roi || 0
     }
   }
 
@@ -119,25 +138,18 @@ export class ROICalculator {
   }
 
   private static calculateRequiredCitiesForBreakeven(inputs: ROIInputs, targetYear: number): number {
-    // Binary search to find minimum cities needed for break-even in target year
-    let low = 1
-    let high = 1000 // Reasonable upper bound
-    let result = high
-
-    while (low <= high) {
-      const mid = Math.floor((low + high) / 2)
-      const testInputs = { ...inputs, targetCities: mid }
-      const testResult = this.calculate(testInputs)
+    // Iterate through candidate city counts to find minimum needed for break-even in target year
+    for (let candidate = 1; candidate <= 500; candidate++) {
+      const modifiedInputs = { ...inputs, targetCities: candidate }
+      const simulationResult = this.simulate(modifiedInputs)
       
-      if (testResult.breakEvenYear !== null && testResult.breakEvenYear <= targetYear) {
-        result = mid
-        high = mid - 1
-      } else {
-        low = mid + 1
+      if (simulationResult.breakEvenYear !== null && simulationResult.breakEvenYear <= targetYear) {
+        return candidate
       }
     }
-
-    return result
+    
+    // If no solution found within reasonable bounds, return a high number
+    return 500
   }
 
   // Helper method to format large numbers
