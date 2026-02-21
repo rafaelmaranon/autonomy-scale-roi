@@ -9,7 +9,7 @@ import { StrategicHeroMetrics } from './StrategicHeroMetrics'
 import { StrategicInputPanel } from './StrategicInputPanel'
 import { StrategicChart } from './StrategicChart'
 import { FleetCounters } from './FleetCounters'
-import { WorldMapV2 } from './WorldMapV2'
+import { GlobalNetworkMap } from './GlobalNetworkMap'
 import { InsightChips } from './InsightChips'
 import { DetailsSection } from './DetailsSection'
 import { StrategicMobileBottomSheet } from './StrategicMobileBottomSheet'
@@ -184,8 +184,8 @@ export function AutonomyROISimulator() {
                 {/* Fleet Scale Counters */}
                 <FleetCounters inputs={inputs} outputs={outputs} />
                 
-                {/* World Map V2 Visualization */}
-                <WorldMapV2 inputs={inputs} outputs={outputs} />
+                {/* Global Network Map - Real Interactive Map */}
+                <GlobalNetworkMap inputs={inputs} outputs={outputs} selectedPreset={selectedPreset} />
                 
                 {/* Insight Chips */}
                 <InsightChips onChipClick={handleInsightClick} />
@@ -206,8 +206,8 @@ export function AutonomyROISimulator() {
               {/* Fleet Counters */}
               <FleetCounters inputs={inputs} outputs={outputs} />
               
-              {/* World Map V2 */}
-              <WorldMapV2 inputs={inputs} outputs={outputs} />
+              {/* Global Network Map - Real Interactive Map */}
+              <GlobalNetworkMap inputs={inputs} outputs={outputs} selectedPreset={selectedPreset} />
               
               {/* Insight Chips */}
               <InsightChips onChipClick={handleInsightClick} />
