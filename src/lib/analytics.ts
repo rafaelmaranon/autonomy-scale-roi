@@ -64,11 +64,17 @@ class Analytics {
     }
     
     if (!this.anonUserId || !this.sessionId) {
-      console.warn('Analytics not initialized')
+      // Silently fail if analytics not initialized (common in dev)
       return
     }
 
     try {
+      // Check if we're in development mode
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`Analytics Event: ${eventName}`, payload)
+        return
+      }
+
       const { error } = await supabase
         .from('analytics_events')
         .insert({
@@ -79,10 +85,16 @@ class Analytics {
         })
 
       if (error) {
-        console.error('Analytics error:', error)
+        // Only log in development, silently fail in production
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('Analytics error (dev only):', error)
+        }
       }
     } catch (error) {
-      console.error('Failed to log analytics event:', error)
+      // Only log in development, silently fail in production
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('Failed to log analytics event (dev only):', error)
+      }
     }
   }
 
