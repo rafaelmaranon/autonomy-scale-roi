@@ -5,6 +5,7 @@ import { ChevronDown, RotateCcw } from 'lucide-react'
 import { SimInputs, SimOutputs, SimYearData, ProfileConfig, profiles, getProfileByName } from '@/lib/sim-types'
 import { SimCalculator } from '@/lib/sim-calculator'
 import { analytics } from '@/lib/analytics'
+import { CapitalCurveChart } from './CapitalCurveChart'
 
 export function V1Simulator() {
   const [inputs, setInputs] = useState<SimInputs>(profiles[0].inputs) // Start with Waymo
@@ -125,7 +126,7 @@ export function V1Simulator() {
                   <div className="text-lg font-bold text-blue-600">
                     {SimCalculator.formatNumber(activeYearData.paidTripsPerWeek)}
                   </div>
-                  <div className="text-xs text-gray-600">Paid Trips/Week</div>
+                  <div className="text-xs text-gray-600">Paid Trips / Week</div>
                 </div>
                 <div>
                   <div className="text-lg font-bold text-blue-600">
@@ -137,7 +138,7 @@ export function V1Simulator() {
                   <div className="text-lg font-bold text-blue-600">
                     {SimCalculator.formatNumber(activeYearData.productionMiles)}
                   </div>
-                  <div className="text-xs text-gray-600">Total Miles (Production)</div>
+                  <div className="text-xs text-gray-600">Production Miles (Cumulative)</div>
                 </div>
                 <div>
                   <div className="text-lg font-bold text-yellow-600">
@@ -211,23 +212,6 @@ export function V1Simulator() {
                       />
                     </div>
 
-                    {/* Profit per Mile */}
-                    <div>
-                      <div className="flex justify-between items-center mb-1">
-                        <label className="text-xs font-medium text-gray-700">Profit per Mile</label>
-                        <span className="text-sm font-bold text-gray-900">${inputs.profitPerMile.toFixed(2)}</span>
-                      </div>
-                      <input
-                        type="range"
-                        min={0.1}
-                        max={2.0}
-                        step={0.05}
-                        value={inputs.profitPerMile}
-                        onChange={(e) => handleInputChange('profitPerMile', parseFloat(e.target.value))}
-                        className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                      />
-                    </div>
-
                     {/* Annual R&D Spend */}
                     <div>
                       <div className="flex justify-between items-center mb-1">
@@ -269,26 +253,31 @@ export function V1Simulator() {
               <div className="lg:col-span-9 grid grid-cols-2 gap-4">
                 {/* Chart - Cumulative Net Cash */}
                 <div className="bg-white rounded-lg border border-gray-200 p-3">
-                  <h3 className="text-sm font-semibold text-gray-900 mb-2">Capital Cycle ({inputs.startYear}-{inputs.startYear + inputs.yearsToSimulate - 1})</h3>
+                  <h3 className="text-sm font-semibold text-gray-900 mb-2">Capital Cycle (2004–2050)</h3>
                   <div className="h-80">
-                    <div className="w-full h-full bg-gray-50 rounded flex items-center justify-center text-gray-500 text-sm">
-                      Chart: Cumulative Net Cash over time
-                      <br />
-                      (Hover interaction coming next)
-                    </div>
+                    <CapitalCurveChart 
+                      data={outputs.yearlyData}
+                      onHover={handleChartHover}
+                      onMouseLeave={handleChartLeave}
+                    />
                   </div>
                 </div>
 
                 {/* Map - Bigger */}
                 <div className="bg-white rounded-lg border border-gray-200 p-3">
-                  <h3 className="text-sm font-semibold text-gray-900 mb-2">Global Network ({activeYearData.citiesTotal} cities)</h3>
-                  <div className="h-80">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-2">
+                    Global Network
+                  </h3>
+                  <p className="text-xs text-gray-600 mb-3">
+                    {activeYearData.citiesTotal} Cities · {SimCalculator.formatNumber(activeYearData.vehiclesProduction)} Production Vehicles
+                  </p>
+                  <div className="h-72">
                     <div className="w-full h-full bg-gray-50 rounded flex items-center justify-center text-gray-500 text-sm">
                       Interactive World Map
                       <br />
-                      {activeYearData.vehiclesProduction.toLocaleString()} production vehicles
-                      <br />
-                      {activeYearData.vehiclesValidation.toLocaleString()} validation vehicles
+                      <span className="text-xs text-gray-400 mt-2 block">
+                        {activeYearData.vehiclesValidation.toLocaleString()} validation vehicles
+                      </span>
                     </div>
                   </div>
                 </div>

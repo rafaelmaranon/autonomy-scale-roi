@@ -53,7 +53,7 @@ export interface ProfileConfig {
 // Waymo Profile: Capital patience → infrastructure dominance
 export const waymoProfile: ProfileConfig = {
   name: 'Waymo',
-  description: 'Deep R&D investment, methodical validation, long-term infrastructure play',
+  description: 'Deep R&D → Infrastructure',
   inputs: {
     startYear: 2004,
     yearsToSimulate: 46, // 2004-2050
@@ -73,7 +73,7 @@ export const waymoProfile: ProfileConfig = {
 // Tesla Profile: Software leverage → fast ROI
 export const teslaProfile: ProfileConfig = {
   name: 'Tesla',
-  description: 'Software leverage, fast enablement, rapid scaling',
+  description: 'Software Leverage',
   inputs: {
     startYear: 2025,
     yearsToSimulate: 25, // 2025-2050
@@ -93,7 +93,7 @@ export const teslaProfile: ProfileConfig = {
 // Custom Profile: User-defined
 export const customProfile: ProfileConfig = {
   name: 'Custom',
-  description: 'User-defined parameters',
+  description: 'User-defined',
   inputs: {
     startYear: 2025,
     yearsToSimulate: 25,
