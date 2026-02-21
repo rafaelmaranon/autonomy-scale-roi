@@ -15,6 +15,7 @@ export type AnalyticsEvent =
   | 'ai_opened'
   | 'ai_question'
   | 'ai_response'
+  | 'insight_chip_clicked'
 
 interface AnalyticsPayload {
   [key: string]: any
