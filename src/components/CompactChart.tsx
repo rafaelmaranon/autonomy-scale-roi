@@ -6,9 +6,11 @@ import { YearlyData } from '@/lib/roi-calculator'
 interface CompactChartProps {
   data: YearlyData[]
   fixedInvestment: number
+  onHover?: (yearIndex: number) => void
+  onMouseLeave?: () => void
 }
 
-export function CompactChart({ data, fixedInvestment }: CompactChartProps) {
+export function CompactChart({ data, fixedInvestment, onHover, onMouseLeave }: CompactChartProps) {
   // Find break-even point
   const breakEvenPoint = data.find(d => d.netProfit >= 0)
 
@@ -38,6 +40,17 @@ export function CompactChart({ data, fixedInvestment }: CompactChartProps) {
           <LineChart
             data={data}
             margin={{ top: 10, right: 10, left: 40, bottom: 20 }}
+            onMouseMove={(event: any) => {
+              if (event && event.activeLabel && onHover) {
+                const yearIndex = event.activeLabel - 1 // Convert year to 0-based index
+                onHover(yearIndex)
+              }
+            }}
+            onMouseLeave={() => {
+              if (onMouseLeave) {
+                onMouseLeave()
+              }
+            }}
           >
             <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
             <XAxis 

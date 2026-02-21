@@ -9,6 +9,7 @@ import { CompactHeroMetrics } from './CompactHeroMetrics'
 import { CompactInputPanel } from './CompactInputPanel'
 import { CompactChart } from './CompactChart'
 import { CompactFleetCounters } from './CompactFleetCounters'
+import { CompactThroughputCounters } from './CompactThroughputCounters'
 import { CompactNetworkMap } from './CompactNetworkMap'
 import { InsightChips } from './InsightChips'
 import { DetailsSection } from './DetailsSection'
@@ -21,6 +22,7 @@ export function AutonomyROISimulator() {
   const [selectedPreset, setSelectedPreset] = useState<string>('Base Case')
   const [showAI, setShowAI] = useState(false)
   const [showMobileControls, setShowMobileControls] = useState(false)
+  const [activeYearIndex, setActiveYearIndex] = useState<number>(9) // Default to Year 10 (index 9)
 
   // Initialize analytics on mount (client-side only)
   useEffect(() => {
@@ -66,10 +68,9 @@ export function AutonomyROISimulator() {
   }
 
   const handleInputChange = (field: keyof ROIInputs, value: number) => {
-    const newInputs = { ...inputs, [field]: value }
-    setInputs(newInputs)
+    setInputs(prev => ({ ...prev, [field]: value }))
+    setActiveYearIndex(9) // Reset to Year 10 when inputs change
     setSelectedPreset('Custom') // Mark as custom when user modifies inputs
-    
     analytics.logEvent('input_change', {
       field,
       value,
@@ -102,6 +103,15 @@ export function AutonomyROISimulator() {
     analytics.logEvent('insight_chip_clicked', {
       prompt
     })
+  }
+
+  // Chart hover handlers for temporal x-ray vision
+  const handleChartHover = (yearIndex: number) => {
+    setActiveYearIndex(yearIndex)
+  }
+
+  const handleChartLeave = () => {
+    setActiveYearIndex(9) // Revert to Year 10 (final state)
   }
 
   return (
@@ -165,11 +175,19 @@ export function AutonomyROISimulator() {
                 <CompactHeroMetrics outputs={outputs} inputs={inputs} />
                 
                 {/* Fleet Counters Strip */}
-                <CompactFleetCounters inputs={inputs} outputs={outputs} />
+                <CompactFleetCounters yearData={outputs.yearlyData[activeYearIndex]} />
+                
+                {/* Throughput Counters Strip */}
+                <CompactThroughputCounters yearData={outputs.yearlyData[activeYearIndex]} activeYear={activeYearIndex + 1} />
                 
                 {/* Bottom Row - Chart and Map Side by Side */}
                 <div className="grid grid-cols-2 gap-4 flex-1">
-                  <CompactChart data={outputs.yearlyData} fixedInvestment={inputs.fixedInvestment} />
+                  <CompactChart 
+                    data={outputs.yearlyData} 
+                    fixedInvestment={inputs.fixedInvestment}
+                    onHover={handleChartHover}
+                    onMouseLeave={handleChartLeave}
+                  />
                   <CompactNetworkMap inputs={inputs} outputs={outputs} selectedPreset={selectedPreset} />
                 </div>
               </div>
@@ -181,13 +199,21 @@ export function AutonomyROISimulator() {
               <CompactHeroMetrics outputs={outputs} inputs={inputs} />
               
               {/* Chart */}
-              <CompactChart data={outputs.yearlyData} fixedInvestment={inputs.fixedInvestment} />
+              <CompactChart 
+                data={outputs.yearlyData} 
+                fixedInvestment={inputs.fixedInvestment}
+                onHover={handleChartHover}
+                onMouseLeave={handleChartLeave}
+              />
               
               {/* Map */}
               <CompactNetworkMap inputs={inputs} outputs={outputs} selectedPreset={selectedPreset} />
               
               {/* Fleet Counters */}
-              <CompactFleetCounters inputs={inputs} outputs={outputs} />
+              <CompactFleetCounters yearData={outputs.yearlyData[activeYearIndex]} />
+              
+              {/* Throughput Counters */}
+              <CompactThroughputCounters yearData={outputs.yearlyData[activeYearIndex]} activeYear={activeYearIndex + 1} />
             </div>
           </>
         )}

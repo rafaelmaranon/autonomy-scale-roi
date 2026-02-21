@@ -27,8 +27,17 @@ export interface YearlyData {
   citiesLaunched: number
   totalCities: number
   totalVehicles: number
+  vehiclesProduction: number
+  vehiclesValidation: number
+  vehiclesAddedThisYear: number
   yearlyMiles: number
   cumulativeMiles: number
+  productionMiles: number
+  validationMiles: number
+  cumulativeProductionMiles: number
+  cumulativeValidationMiles: number
+  productionTrips: number
+  cumulativeProductionTrips: number
   yearlyProfit: number
   cumulativeProfit: number
   netProfit: number // Cumulative profit minus fixed investment
@@ -86,35 +95,67 @@ export class ROICalculator {
     }
   }
 
-  private static calculateYearData(
-    year: number, 
-    inputs: ROIInputs, 
-    previousData: YearlyData[]
-  ): YearlyData {
-    // Calculate cities launched this year (capped by target)
-    const citiesLaunched = Math.min(inputs.citiesPerYear, 
-      Math.max(0, inputs.targetCities - (year - 1) * inputs.citiesPerYear))
+  private static calculateYearData(year: number, inputs: ROIInputs, previousData: YearlyData[]): YearlyData {
+    // Calculate cities launched this year
+    const citiesLaunched = Math.min(inputs.citiesPerYear, Math.max(0, inputs.targetCities - (year - 1) * inputs.citiesPerYear))
     
-    // Total cities launched by end of this year
+    // Calculate total cities launched by this year
     const totalCities = Math.min(inputs.targetCities, year * inputs.citiesPerYear)
     
-    // Calculate total vehicles considering city ramp time
+    // Calculate total vehicles across all cities, split by production/validation
     let totalVehicles = 0
+    let vehiclesProduction = 0
+    let vehiclesValidation = 0
+    
     for (let cityYear = 1; cityYear <= year; cityYear++) {
-      const citiesFromThisYear = Math.min(inputs.citiesPerYear,
-        Math.max(0, inputs.targetCities - (cityYear - 1) * inputs.citiesPerYear))
+      const citiesLaunchedInYear = Math.min(
+        inputs.citiesPerYear,
+        Math.max(0, inputs.targetCities - (cityYear - 1) * inputs.citiesPerYear)
+      )
       
-      const yearsOperating = year - cityYear + 1
-      const rampProgress = Math.min(1, yearsOperating / inputs.cityRampTime)
+      if (citiesLaunchedInYear <= 0) continue
       
-      totalVehicles += citiesFromThisYear * inputs.vehiclesPerCity * rampProgress
+      const yearsActive = year - cityYear + 1
+      const rampProgress = Math.min(1, yearsActive / inputs.cityRampTime)
+      const vehiclesThisYear = citiesLaunchedInYear * inputs.vehiclesPerCity * rampProgress
+      
+      totalVehicles += vehiclesThisYear
+      
+      // Split production vs validation based on ramp time
+      if (yearsActive >= inputs.cityRampTime) {
+        vehiclesProduction += vehiclesThisYear
+      } else {
+        vehiclesValidation += vehiclesThisYear
+      }
     }
 
-    // Calculate miles and profits
-    const yearlyMiles = totalVehicles * inputs.milesPerVehiclePerYear
-    const previousCumulativeMiles = previousData[previousData.length - 1]?.cumulativeMiles || 0
-    const cumulativeMiles = previousCumulativeMiles + yearlyMiles
+    // Calculate vehicles added this year
+    const previousTotalVehicles = previousData[previousData.length - 1]?.totalVehicles || 0
+    const vehiclesAddedThisYear = totalVehicles - previousTotalVehicles
+
+    // Calculate miles breakdown
+    const averageTripLength = 6 // miles per trip (reasonable urban average)
+    const validationUtilization = 0.3 // Validation vehicles run at 30% utilization
     
+    const productionMiles = vehiclesProduction * inputs.milesPerVehiclePerYear
+    const validationMiles = vehiclesValidation * inputs.milesPerVehiclePerYear * validationUtilization
+    const yearlyMiles = productionMiles + validationMiles
+    
+    // Calculate trips (production only)
+    const productionTrips = Math.round(productionMiles / averageTripLength)
+    
+    // Calculate cumulative values
+    const previousCumulativeMiles = previousData[previousData.length - 1]?.cumulativeMiles || 0
+    const previousCumulativeProductionMiles = previousData[previousData.length - 1]?.cumulativeProductionMiles || 0
+    const previousCumulativeValidationMiles = previousData[previousData.length - 1]?.cumulativeValidationMiles || 0
+    const previousCumulativeProductionTrips = previousData[previousData.length - 1]?.cumulativeProductionTrips || 0
+    
+    const cumulativeMiles = previousCumulativeMiles + yearlyMiles
+    const cumulativeProductionMiles = previousCumulativeProductionMiles + productionMiles
+    const cumulativeValidationMiles = previousCumulativeValidationMiles + validationMiles
+    const cumulativeProductionTrips = previousCumulativeProductionTrips + productionTrips
+    
+    // Calculate profits
     const yearlyProfit = yearlyMiles * inputs.profitPerMile
     const previousCumulativeProfit = previousData[previousData.length - 1]?.cumulativeProfit || 0
     const cumulativeProfit = previousCumulativeProfit + yearlyProfit
@@ -128,8 +169,17 @@ export class ROICalculator {
       citiesLaunched,
       totalCities,
       totalVehicles: Math.round(totalVehicles),
+      vehiclesProduction: Math.round(vehiclesProduction),
+      vehiclesValidation: Math.round(vehiclesValidation),
+      vehiclesAddedThisYear: Math.round(vehiclesAddedThisYear),
       yearlyMiles,
       cumulativeMiles,
+      productionMiles,
+      validationMiles,
+      cumulativeProductionMiles,
+      cumulativeValidationMiles,
+      productionTrips,
+      cumulativeProductionTrips,
       yearlyProfit,
       cumulativeProfit,
       netProfit,
