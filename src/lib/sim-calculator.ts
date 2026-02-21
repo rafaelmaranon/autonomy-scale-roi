@@ -64,6 +64,26 @@ export class SimCalculator {
       }
     }
     
+    // Apply 3-phase scaling discipline for realistic Waymo curve
+    let productionCapacityMultiplier = 1.0
+    
+    // PHASE 1: 2004-2017 - Pure R&D, no commercial production
+    if (currentYear <= 2017) {
+      productionCapacityMultiplier = 0
+    }
+    // PHASE 2: 2018-2024 - Limited commercialization, capped at 25% capacity
+    else if (currentYear >= 2018 && currentYear <= 2024) {
+      const commercialProgress = (currentYear - 2018 + 1) / 7 // 7 years from 2018-2024
+      productionCapacityMultiplier = Math.min(commercialProgress * 0.25, 0.25)
+    }
+    // PHASE 3: 2025+ - Full scaling allowed
+    else {
+      productionCapacityMultiplier = 1.0
+    }
+    
+    // Apply capacity multiplier to production vehicles
+    vehiclesProduction = vehiclesProduction * productionCapacityMultiplier
+    
     // Calculate miles
     const productionMiles = vehiclesProduction * multipliers.productionUtilization * 365
     const validationMiles = vehiclesValidation * multipliers.validationUtilization * 365
@@ -72,8 +92,14 @@ export class SimCalculator {
     const productionTrips = Math.round(productionMiles / 6)
     const paidTripsPerWeek = Math.round(productionTrips / 52)
     
-    // Calculate economics
-    const operatingProfit = productionMiles * inputs.profitPerMile
+    // Calculate operating profit with constraints
+    let operatingProfit = productionMiles * inputs.profitPerMile
+    
+    // Constraint: Operating profit cannot exceed R&D × 0.3 before 2028
+    if (currentYear < 2028) {
+      const maxAllowedProfit = (inputs.annualRDSpend * 1e9) * 0.3
+      operatingProfit = Math.min(operatingProfit, maxAllowedProfit)
+    }
     
     // R&D with tapering after break-even
     const previousData_ = previousData[previousData.length - 1]

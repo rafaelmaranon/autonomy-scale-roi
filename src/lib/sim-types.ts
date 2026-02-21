@@ -57,16 +57,16 @@ export const waymoProfile: ProfileConfig = {
   inputs: {
     startYear: 2004,
     yearsToSimulate: 46, // 2004-2050
-    citiesPerYear: 6,
-    vehiclesPerCity: 2000,
-    profitPerMile: 0.60,
-    annualRDSpend: 1.5,
-    rampTimePerCity: 2.5
+    citiesPerYear: 4, // Slower expansion for realistic curve
+    vehiclesPerCity: 1500, // Conservative fleet size
+    profitPerMile: 0.50, // Lower margin initially
+    annualRDSpend: 1.2, // Sustained R&D investment
+    rampTimePerCity: 3.0 // Longer ramp time for methodical approach
   },
   multipliers: {
     rdTaperAfterBreakeven: 0.4,
-    productionUtilization: 100, // miles per vehicle per day
-    validationUtilization: 70
+    productionUtilization: 80, // Conservative utilization
+    validationUtilization: 60
   }
 }
 

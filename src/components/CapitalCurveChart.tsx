@@ -18,14 +18,21 @@ export function CapitalCurveChart({ data, onHover, onMouseLeave }: CapitalCurveC
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       const yearData = payload[0].payload
+      const phase = label <= 2017 ? 'Pure R&D' : 
+                   label <= 2024 ? 'Limited Commercial' : 
+                   'Full Scaling'
       return (
         <div className="bg-white p-3 border border-gray-200 rounded shadow-lg text-sm">
           <p className="font-medium text-gray-900 mb-1">{label}</p>
+          <p className="text-xs text-gray-500 mb-2">{phase}</p>
           <p className="text-blue-600">
             Net Cash: ${(yearData.cumulativeNetCash / 1e9).toFixed(1)}B
           </p>
           <p className="text-gray-600 text-xs">
             ROI: {yearData.roi.toFixed(1)}%
+          </p>
+          <p className="text-gray-600 text-xs">
+            Annual R&D: ${yearData.annualRDSpend.toFixed(1)}B
           </p>
         </div>
       )
@@ -90,19 +97,27 @@ export function CapitalCurveChart({ data, onHover, onMouseLeave }: CapitalCurveC
             strokeDasharray="2 2"
           />
           
+          {/* Commercial Launch marker (2018) */}
+          <ReferenceLine 
+            x={2018} 
+            stroke="#10b981" 
+            strokeWidth={2}
+            strokeDasharray="3 3"
+          />
+          
           {/* Today marker (2025) */}
           <ReferenceLine 
             x={currentYear} 
-            stroke="#6b7280" 
+            stroke="#374151" 
             strokeWidth={2}
             strokeDasharray="4 4"
           />
           
-          {/* Break-even marker */}
+          {/* Break-even marker - only when cumulative net cash >= 0 */}
           {breakEvenPoint && (
             <ReferenceLine 
               x={breakEvenPoint.year} 
-              stroke="#10b981" 
+              stroke="#059669" 
               strokeWidth={2}
               strokeDasharray="2 2"
             />
