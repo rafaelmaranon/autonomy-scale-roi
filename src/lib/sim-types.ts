@@ -9,6 +9,8 @@ export interface SimInputs {
   profitPerMile: number
   annualRDSpend: number // in billions
   rampTimePerCity: number
+  opsRevenueStartYear: number // Year when paid operations begin
+  scalePhaseYear: number // Year when R&D tapering begins
 }
 
 // Yearly simulation data
@@ -61,7 +63,9 @@ export const waymoProfile: ProfileConfig = {
     vehiclesPerCity: 1500, // Conservative fleet size
     profitPerMile: 0.50, // Lower margin initially
     annualRDSpend: 1.2, // Sustained R&D investment
-    rampTimePerCity: 3.0 // Longer ramp time for methodical approach
+    rampTimePerCity: 3.0, // Longer ramp time for methodical approach
+    opsRevenueStartYear: 2018, // Early paid ops start
+    scalePhaseYear: 2025 // R&D tapering begins at scale phase
   },
   multipliers: {
     rdTaperAfterBreakeven: 0.4,
@@ -78,10 +82,12 @@ export const teslaProfile: ProfileConfig = {
     startYear: 2025,
     yearsToSimulate: 25, // 2025-2050
     citiesPerYear: 20,
-    vehiclesPerCity: 5000,
-    profitPerMile: 1.20,
-    annualRDSpend: 0.4,
-    rampTimePerCity: 1.0
+    vehiclesPerCity: 5000, // Higher density through enablement
+    profitPerMile: 1.20, // Higher margins through software leverage
+    annualRDSpend: 0.4, // Lower incremental R&D
+    rampTimePerCity: 1.0, // Fast enablement
+    opsRevenueStartYear: 2025, // Immediate revenue start
+    scalePhaseYear: 2027 // Quick R&D tapering
   },
   multipliers: {
     rdTaperAfterBreakeven: 0.3,
@@ -101,7 +107,9 @@ export const customProfile: ProfileConfig = {
     vehiclesPerCity: 3000,
     profitPerMile: 0.80,
     annualRDSpend: 1.0,
-    rampTimePerCity: 2.0
+    rampTimePerCity: 2.0,
+    opsRevenueStartYear: 2026, // Standard revenue start
+    scalePhaseYear: 2028 // Standard R&D tapering
   },
   multipliers: {
     rdTaperAfterBreakeven: 0.5,

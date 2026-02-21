@@ -15,6 +15,7 @@ export function V1Simulator() {
   const [selectedProfile, setSelectedProfile] = useState<string>('Waymo')
   const [activeYearIndex, setActiveYearIndex] = useState<number>(45) // Default to final year
   const [showSourcesModal, setShowSourcesModal] = useState<boolean>(false)
+  const [chartView, setChartView] = useState<string>('netCash') // Default to Net Cash view
 
   // Calculate outputs whenever inputs change
   useEffect(() => {
@@ -257,19 +258,43 @@ export function V1Simulator() {
                 {/* Chart - Cumulative Net Cash */}
                 <div className="bg-white rounded-lg border border-gray-200 p-3">
                   <div className="flex justify-between items-center mb-2">
-                    <h3 className="text-sm font-semibold text-gray-900">Capital Cycle (2004–2050)</h3>
-                    {selectedProfile === 'Waymo' && (
-                      <button
-                        onClick={() => setShowSourcesModal(true)}
-                        className="text-xs text-blue-600 hover:text-blue-800 underline transition-colors"
-                      >
-                        Historical data sources
-                      </button>
-                    )}
+                    <h3 className="text-sm font-semibold text-gray-900">
+                      {chartView === 'netCash' && 'Capital Cycle (2004–2050)'}
+                      {chartView === 'paidTrips' && 'Paid Trips per Week'}
+                      {chartView === 'fleetSize' && 'Fleet Size (Production)'}
+                      {chartView === 'productionMiles' && 'Production Miles per Year'}
+                      {chartView === 'validationMiles' && 'Validation Miles per Year'}
+                    </h3>
+                    <div className="flex items-center gap-2">
+                      {/* View Dropdown */}
+                      <div className="relative">
+                        <select
+                          value={chartView}
+                          onChange={(e) => setChartView(e.target.value)}
+                          className="text-xs border border-gray-300 rounded px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        >
+                          <option value="netCash">Net Cash (Cumulative)</option>
+                          <option value="paidTrips">Paid Trips / Week</option>
+                          <option value="fleetSize">Fleet Size (Production)</option>
+                          <option value="productionMiles">Production Miles /year</option>
+                          <option value="validationMiles">Validation Miles/year</option>
+                        </select>
+                      </div>
+                      {/* Historical Sources Link */}
+                      {selectedProfile === 'Waymo' && chartView === 'netCash' && (
+                        <button
+                          onClick={() => setShowSourcesModal(true)}
+                          className="text-xs text-blue-600 hover:text-blue-800 underline transition-colors"
+                        >
+                          Historical data sources
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <div className="h-80">
                     <CapitalCurveChart 
                       data={outputs.yearlyData}
+                      chartView={chartView}
                       onHover={handleChartHover}
                       onMouseLeave={handleChartLeave}
                     />

@@ -6,14 +6,58 @@ import { WAYMO_PUBLIC_ANCHORS, getDataPeriod } from '@/lib/historical-anchors'
 
 interface CapitalCurveChartProps {
   data: SimYearData[]
-  onHover?: (yearIndex: number) => void
+  chartView?: string // View mode: netCash, paidTrips, fleetSize, productionMiles, validationMiles
+  onHover?: (index: number) => void
   onMouseLeave?: () => void
 }
 
-export function CapitalCurveChart({ data, onHover, onMouseLeave }: CapitalCurveChartProps) {
-  // Find break-even point
-  const breakEvenPoint = data.find(d => d.cumulativeNetCash >= 0)
-  const currentYear = 2025
+export function CapitalCurveChart({ data, chartView = 'netCash', onHover, onMouseLeave }: CapitalCurveChartProps) {
+  // Find break-even point (only for Net Cash view)
+  const breakEvenPoint = chartView === 'netCash' ? data.find(d => d.cumulativeNetCash >= 0) : null
+  const currentYear = 2026
+  
+  // Get data field and formatting based on chart view
+  const getChartConfig = () => {
+    switch (chartView) {
+      case 'paidTrips':
+        return { 
+          dataKey: 'paidTripsPerWeek', 
+          color: '#3b82f6',
+          formatValue: (value: number) => `${(value / 1000).toFixed(0)}K trips/week`,
+          yAxisDomain: [0, 'dataMax']
+        }
+      case 'fleetSize':
+        return { 
+          dataKey: 'vehiclesProduction', 
+          color: '#10b981',
+          formatValue: (value: number) => `${(value / 1000).toFixed(0)}K vehicles`,
+          yAxisDomain: [0, 'dataMax']
+        }
+      case 'productionMiles':
+        return { 
+          dataKey: 'productionMiles', 
+          color: '#8b5cf6',
+          formatValue: (value: number) => `${(value / 1e9).toFixed(1)}B miles/year`,
+          yAxisDomain: [0, 'dataMax']
+        }
+      case 'validationMiles':
+        return { 
+          dataKey: 'validationMiles', 
+          color: '#f59e0b',
+          formatValue: (value: number) => `${(value / 1e9).toFixed(1)}B miles/year`,
+          yAxisDomain: [0, 'dataMax']
+        }
+      default: // netCash
+        return { 
+          dataKey: 'cumulativeNetCash', 
+          color: '#3b82f6',
+          formatValue: (value: number) => `$${(value / 1e9).toFixed(0)}B`,
+          yAxisDomain: [-100e9, 150e9]
+        }
+    }
+  }
+  
+  const chartConfig = getChartConfig()
 
   // Clean tooltip with key metrics
   const CustomTooltip = ({ active, payload, label }: any) => {
@@ -25,33 +69,20 @@ export function CapitalCurveChart({ data, onHover, onMouseLeave }: CapitalCurveC
       const isAnchored = anchors.length > 0
       
       return (
-        <div className="bg-white p-3 border border-gray-200 rounded shadow-lg text-sm">
-          <p className="font-medium text-gray-900 mb-2">{label}</p>
-          
-          {isAnchored && (
-            <p className="text-xs font-medium text-green-600 mb-2">● Anchored</p>
-          )}
-          
-          <div className="space-y-1">
-            <p className="text-blue-600 font-medium">
-              Net Cash: ${(yearData.cumulativeNetCash / 1e9).toFixed(1)}B
-            </p>
-            
-            <p className="text-gray-600 text-xs">
-              Paid trips/week: {yearData.paidTripsPerWeek.toLocaleString()}
-            </p>
-            
-            <p className="text-gray-600 text-xs">
-              Total trips: {(yearData.productionTrips / 1e6).toFixed(1)}M
-            </p>
-            
-            <p className="text-gray-600 text-xs">
-              Production miles: {(yearData.productionMiles / 1e6).toFixed(0)}M
-            </p>
-            
-            <p className="text-gray-600 text-xs">
-              Validation miles: {(yearData.validationMiles / 1e6).toFixed(0)}M
-            </p>
+        <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
+          <div className="text-sm font-semibold text-gray-900 mb-2">
+            {label} {isAnchored && chartView === 'netCash' && <span className="text-green-600 font-medium">(Anchored)</span>}
+          </div>
+          <div className="space-y-1 text-xs text-gray-700">
+            <div><strong>Current Value:</strong> {chartConfig.formatValue(yearData[chartConfig.dataKey])}</div>
+            {chartView === 'netCash' && (
+              <>
+                <div><strong>Paid trips/week:</strong> {(yearData.paidTripsPerWeek / 1000).toFixed(0)}K</div>
+                <div><strong>Total trips:</strong> {(yearData.productionTrips / 1e6).toFixed(1)}M</div>
+                <div><strong>Production miles:</strong> {(yearData.productionMiles / 1e9).toFixed(1)}B</div>
+                <div><strong>Validation miles:</strong> {(yearData.validationMiles / 1e9).toFixed(1)}B</div>
+              </>
+            )}
           </div>
         </div>
       )
@@ -79,96 +110,76 @@ export function CapitalCurveChart({ data, onHover, onMouseLeave }: CapitalCurveC
             }
           }}
         >
-          <defs>
-            <linearGradient id="debtArea" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#fee2e2" stopOpacity={0.4} />
-              <stop offset="100%" stopColor="#fecaca" stopOpacity={0.2} />
-            </linearGradient>
-          </defs>
-          
-          <CartesianGrid strokeDasharray="2 2" stroke="#f9fafb" />
-          
+          <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" strokeWidth={0.5} />
           <XAxis 
             dataKey="year" 
-            stroke="#9ca3af"
-            fontSize={11}
-            tickLine={false}
             axisLine={false}
-            interval="preserveStartEnd"
-            ticks={[2004, 2015, 2025, 2035, 2045, 2050]}
+            tickLine={false}
+            tick={{ fontSize: 11, fill: '#9ca3af' }}
+            tickFormatter={(value) => value.toString()}
           />
-          
           <YAxis 
-            stroke="#9ca3af"
-            fontSize={11}
-            tickLine={false}
             axisLine={false}
-            tickFormatter={(value) => `$${(value / 1e9).toFixed(0)}B`}
-            domain={['dataMin', 'dataMax']}
-            ticks={[-100, -50, 0, 50, 100, 150]}
+            tickLine={false}
+            tick={{ fontSize: 11, fill: '#9ca3af' }}
+            domain={chartConfig.yAxisDomain as any}
+            tickFormatter={(value) => {
+              if (chartView === 'netCash') {
+                return `$${(value / 1e9).toFixed(0)}B`
+              } else if (chartView === 'paidTrips') {
+                return `${(value / 1000).toFixed(0)}K`
+              } else if (chartView === 'fleetSize') {
+                return `${(value / 1000).toFixed(0)}K`
+              } else {
+                return `${(value / 1e9).toFixed(1)}B`
+              }
+            }}
           />
-          
           <Tooltip content={<CustomTooltip />} />
           
-          {/* Thin gray zero baseline */}
-          <ReferenceLine 
-            y={0} 
-            stroke="#d1d5db" 
-            strokeWidth={1}
-          />
-          
-          {/* 2004 Start marker */}
-          <ReferenceLine 
-            x={2004} 
-            stroke="#6b7280" 
-            strokeWidth={1}
-            strokeDasharray="2 2"
-          />
-          
-          {/* Today marker (2025) */}
-          <ReferenceLine 
-            x={currentYear} 
-            stroke="#374151" 
-            strokeWidth={1}
-            strokeDasharray="3 3"
-          />
-          
-          {/* Break-even marker (computed) */}
-          {breakEvenPoint && (
-            <ReferenceLine 
-              x={breakEvenPoint.year} 
-              stroke="#059669" 
-              strokeWidth={1}
-              strokeDasharray="2 2"
-            />
+          {/* Reference lines - only for Net Cash view */}
+          {chartView === 'netCash' && (
+            <>
+              {/* Zero baseline - break-even line */}
+              <ReferenceLine y={0} stroke="#6b7280" strokeWidth={1.5} strokeDasharray="2 2" />
+              {/* Today marker */}
+              <ReferenceLine x={currentYear} stroke="#374151" strokeWidth={2} strokeDasharray="4 4" />
+              {/* Break-even marker */}
+              {breakEvenPoint && (
+                <ReferenceLine x={breakEvenPoint.year} stroke="#059669" strokeWidth={2} strokeDasharray="4 4" />
+              )}
+            </>
           )}
           
-          {/* Debt area (below zero only) */}
-          <Area
-            type="monotone"
-            dataKey="cumulativeNetCash"
-            stroke="none"
-            fill="url(#debtArea)"
-            fillOpacity={1}
-            isAnimationActive={false}
-          />
-          
-          {/* Main cumulative net cash line */}
+          {/* Main line */}
           <Line 
             type="monotone" 
-            dataKey="cumulativeNetCash" 
-            stroke="#3b82f6" 
-            strokeWidth={2}
-            dot={(props: any) => {
-              const { cx, cy, payload } = props
-              const anchors = WAYMO_PUBLIC_ANCHORS.filter(anchor => anchor.year === payload.year)
-              if (anchors.length > 0) {
-                return <circle cx={cx} cy={cy} r={3} fill="#16a34a" stroke="#ffffff" strokeWidth={1} />
-              }
-              return null
-            }}
-            activeDot={{ r: 4, fill: '#3b82f6' }}
+            dataKey={chartConfig.dataKey}
+            stroke={chartConfig.color}
+            strokeWidth={2.5}
+            dot={false}
+            activeDot={{ r: 4, fill: chartConfig.color }}
           />
+          
+          {/* Historical anchor dots - only for Net Cash view */}
+          {chartView === 'netCash' && WAYMO_PUBLIC_ANCHORS.map((anchor) => {
+            const dataPoint = data.find(d => d.year === anchor.year)
+            if (dataPoint) {
+              return (
+                <Line
+                  key={`anchor-${anchor.year}`}
+                  type="monotone"
+                  dataKey="cumulativeNetCash"
+                  stroke="transparent"
+                  strokeWidth={0}
+                  dot={{ r: 3, fill: '#10b981', stroke: '#10b981', strokeWidth: 1 }}
+                  activeDot={false}
+                  data={[dataPoint]}
+                />
+              )
+            }
+            return null
+          })}
         </LineChart>
       </ResponsiveContainer>
     </div>

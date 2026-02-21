@@ -20,7 +20,9 @@ export const waymoProfile: ProfileConfig = {
     vehiclesPerCity: 1500, // Conservative fleet size
     profitPerMile: 0.50, // Lower margin initially
     annualRDSpend: 1.2, // Sustained R&D investment
-    rampTimePerCity: 3.0 // Longer ramp time for methodical approach
+    rampTimePerCity: 3.0, // Longer ramp time for methodical approach
+    opsRevenueStartYear: 2018, // Early paid ops start
+    scalePhaseYear: 2025 // R&D tapering begins at scale phase
   },
   multipliers: {
     rdTaperAfterBreakeven: 0.4, // Reduce R&D by 60% after break-even
@@ -40,7 +42,9 @@ export const teslaProfile: ProfileConfig = {
     vehiclesPerCity: 5000, // Higher density through enablement
     profitPerMile: 1.20, // Higher margins through software leverage
     annualRDSpend: 0.4, // Lower incremental R&D
-    rampTimePerCity: 1.0 // Fast enablement
+    rampTimePerCity: 1.0, // Fast enablement
+    opsRevenueStartYear: 2025, // Immediate revenue start
+    scalePhaseYear: 2027 // Quick R&D tapering
   },
   multipliers: {
     rdTaperAfterBreakeven: 0.3, // Reduce R&D by 70% after break-even
@@ -60,7 +64,9 @@ export const customProfile: ProfileConfig = {
     vehiclesPerCity: 3000,
     profitPerMile: 0.80,
     annualRDSpend: 1.0,
-    rampTimePerCity: 2.0
+    rampTimePerCity: 2.0,
+    opsRevenueStartYear: 2026, // Standard revenue start
+    scalePhaseYear: 2028 // Standard R&D tapering
   },
   multipliers: {
     rdTaperAfterBreakeven: 0.5, // Standard 50% reduction

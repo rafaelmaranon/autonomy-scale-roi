@@ -92,25 +92,27 @@ export class SimCalculator {
     const productionTrips = Math.round(productionMiles / 6)
     const paidTripsPerWeek = Math.round(productionTrips / 52)
     
-    // Calculate operating profit with constraints
-    let operatingProfit = productionMiles * inputs.profitPerMile
+    // Calculate economics with revenue ramp
+    let operatingProfit = 0
     
-    // Constraint: Operating profit cannot exceed R&D × 0.3 before 2028
-    if (currentYear < 2028) {
-      const maxAllowedProfit = (inputs.annualRDSpend * 1e9) * 0.3
-      operatingProfit = Math.min(operatingProfit, maxAllowedProfit)
+    // Only generate revenue after ops revenue start year
+    if (currentYear >= inputs.opsRevenueStartYear) {
+      // S-curve revenue ramp: slow → steep → plateau
+      const yearsIntoOps = currentYear - inputs.opsRevenueStartYear
+      const rampProgress = Math.min(1, yearsIntoOps / 7) // 7-year ramp to full revenue
+      const sCurveMultiplier = 3 * Math.pow(rampProgress, 2) - 2 * Math.pow(rampProgress, 3) // S-curve formula
+      operatingProfit = productionMiles * inputs.profitPerMile * sCurveMultiplier
     }
     
-    // R&D with tapering after break-even
-    const previousData_ = previousData[previousData.length - 1]
-    const hasReachedBreakeven = previousData_?.cumulativeNetCash && previousData_.cumulativeNetCash >= 0
-    const rdMultiplier = hasReachedBreakeven ? multipliers.rdTaperAfterBreakeven : 1.0
+    // R&D with tapering after scale phase (not break-even)
+    const hasReachedScalePhase = currentYear >= inputs.scalePhaseYear
+    const rdMultiplier = hasReachedScalePhase ? multipliers.rdTaperAfterBreakeven : 1.0
     const annualRDSpend = inputs.annualRDSpend * rdMultiplier
-    const cumulativeRDSpend = (previousData_?.cumulativeRDSpend || 0) + annualRDSpend
+    const cumulativeRDSpend = (previousData[previousData.length - 1]?.cumulativeRDSpend || 0) + annualRDSpend
     
     // Net cash flow (can go negative for years)
     const netCashFlow = operatingProfit - (annualRDSpend * 1e9) // Convert R&D to dollars
-    const cumulativeNetCash = (previousData_?.cumulativeNetCash || 0) + netCashFlow
+    const cumulativeNetCash = (previousData[previousData.length - 1]?.cumulativeNetCash || 0) + netCashFlow
     
     // ROI calculation
     const totalRDInvestment = cumulativeRDSpend * 1e9
