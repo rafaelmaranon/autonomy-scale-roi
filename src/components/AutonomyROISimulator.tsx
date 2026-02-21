@@ -5,13 +5,15 @@ import { ChevronDown, RotateCcw, MessageCircle, Settings } from 'lucide-react'
 import { ROIInputs, ROIOutputs, ROICalculator } from '@/lib/roi-calculator'
 import { presets, getPresetByName } from '@/lib/presets'
 import { analytics } from '@/lib/analytics'
-import { LeanHeroMetrics } from './LeanHeroMetrics'
-import { LeanInputPanel } from './LeanInputPanel'
-import { LeanChart } from './LeanChart'
+import { StrategicHeroMetrics } from './StrategicHeroMetrics'
+import { StrategicInputPanel } from './StrategicInputPanel'
+import { StrategicChart } from './StrategicChart'
+import { FleetCounters } from './FleetCounters'
+import { WorldMap } from './WorldMap'
 import { InsightChips } from './InsightChips'
 import { DetailsSection } from './DetailsSection'
-import { MobileBottomSheet } from './MobileBottomSheet'
-import { AskAI } from './AskAI'
+import { StrategicMobileBottomSheet } from './StrategicMobileBottomSheet'
+// import { AskAI } from './AskAI'
 
 export function AutonomyROISimulator() {
   const [inputs, setInputs] = useState<ROIInputs>(presets[1].inputs) // Start with Base Case
@@ -161,23 +163,29 @@ export function AutonomyROISimulator() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {outputs && (
           <>
-            {/* Desktop Layout - 2 Column */}
+            {/* Desktop Layout - 2 Column Strategic Control Room */}
             <div className="hidden lg:grid lg:grid-cols-4 gap-8">
-              {/* Left Panel - Inputs (Sticky) */}
+              {/* Left Panel - Strategic Parameters (Sticky) */}
               <div className="lg:col-span-1">
-                <LeanInputPanel
+                <StrategicInputPanel
                   inputs={inputs}
                   onInputChange={handleInputChange}
                 />
               </div>
 
-              {/* Right Panel - Chart + Metrics */}
+              {/* Right Panel - Strategic Dashboard */}
               <div className="lg:col-span-3 space-y-4">
-                {/* Hero Metrics */}
-                <LeanHeroMetrics outputs={outputs} />
+                {/* Strategic Hero Metrics */}
+                <StrategicHeroMetrics outputs={outputs} inputs={inputs} />
                 
-                {/* Chart */}
-                <LeanChart data={outputs.yearlyData} fixedInvestment={inputs.fixedInvestment} />
+                {/* Strategic Chart - Dominant */}
+                <StrategicChart data={outputs.yearlyData} fixedInvestment={inputs.fixedInvestment} />
+                
+                {/* Fleet Scale Counters */}
+                <FleetCounters inputs={inputs} outputs={outputs} />
+                
+                {/* World Map Visualization */}
+                <WorldMap inputs={inputs} />
                 
                 {/* Insight Chips */}
                 <InsightChips onChipClick={handleInsightClick} />
@@ -187,13 +195,19 @@ export function AutonomyROISimulator() {
               </div>
             </div>
 
-            {/* Mobile Layout - Single Column */}
+            {/* Mobile Layout - Strategic Control Room Order */}
             <div className="lg:hidden space-y-4">
               {/* Hero Metrics */}
-              <LeanHeroMetrics outputs={outputs} />
+              <StrategicHeroMetrics outputs={outputs} inputs={inputs} />
               
               {/* Chart */}
-              <LeanChart data={outputs.yearlyData} fixedInvestment={inputs.fixedInvestment} />
+              <StrategicChart data={outputs.yearlyData} fixedInvestment={inputs.fixedInvestment} />
+              
+              {/* Fleet Counters */}
+              <FleetCounters inputs={inputs} outputs={outputs} />
+              
+              {/* World Map */}
+              <WorldMap inputs={inputs} />
               
               {/* Insight Chips */}
               <InsightChips onChipClick={handleInsightClick} />
@@ -214,8 +228,8 @@ export function AutonomyROISimulator() {
         <span className="text-sm font-medium">Controls</span>
       </button>
 
-      {/* Mobile Bottom Sheet */}
-      <MobileBottomSheet
+      {/* Strategic Mobile Bottom Sheet */}
+      <StrategicMobileBottomSheet
         isOpen={showMobileControls}
         onClose={() => setShowMobileControls(false)}
         inputs={inputs}
@@ -225,14 +239,14 @@ export function AutonomyROISimulator() {
         onReset={handleReset}
       />
 
-      {/* Desktop Ask AI Modal */}
-      {showAI && outputs && (
+      {/* Desktop Ask AI Modal - Temporarily disabled */}
+      {/* {showAI && outputs && (
         <AskAI
           inputs={inputs}
           outputs={outputs}
           onClose={() => setShowAI(false)}
         />
-      )}
+      )} */}
     </div>
   )
 }
