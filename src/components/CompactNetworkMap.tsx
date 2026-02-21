@@ -29,19 +29,19 @@ export function CompactNetworkMap({ inputs, outputs, selectedPreset }: CompactNe
 
   // Calculate cities
   const year10Data = outputs.yearlyData[9] || outputs.yearlyData[outputs.yearlyData.length - 1]
-  const totalCities = Math.min(inputs.targetCities, 10 * inputs.citiesPerYear)
+  const totalCities = Math.min(inputs.citiesPerYear * 10, 100) // Estimate based on 10 years
   const selectedCities = selectCities(totalCities, selectedPreset)
   const { production, validating } = categorizeCities(
     selectedCities,
     inputs.citiesPerYear,
-    inputs.cityRampTime,
+    inputs.rampTimePerCity,
     10
   )
 
   const handleMarkerHover = (city: City, status: 'production' | 'validating', event: any) => {
     const yearEntered = status === 'production' 
-      ? Math.max(1, 10 - inputs.cityRampTime) 
-      : Math.max(1, 10 - inputs.cityRampTime + 1)
+      ? Math.max(1, 10 - inputs.rampTimePerCity) 
+      : Math.max(1, 10 - inputs.rampTimePerCity + 1)
     
     setTooltip({
       city,

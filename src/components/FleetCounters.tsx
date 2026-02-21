@@ -59,35 +59,27 @@ export function FleetCounters({ inputs, outputs }: FleetCountersProps) {
 
   // Calculate fleet metrics
   const calculateFleetMetrics = () => {
-    const currentYear = Math.min(10, Math.ceil(inputs.targetCities / inputs.citiesPerYear))
+    const currentYear = Math.min(10, inputs.yearsToSimulate)
     const yearData = outputs.yearlyData[currentYear - 1] || outputs.yearlyData[outputs.yearlyData.length - 1]
     
-    const totalVehicles = inputs.targetCities * inputs.vehiclesPerCity
+    // Simplified calculation for now
+    const citiesInProduction = Math.floor(currentYear * inputs.citiesPerYear * 0.7)
+    const citiesInValidation = Math.floor(currentYear * inputs.citiesPerYear * 0.3)
     
-    // Calculate cities in production vs validation based on ramp time
-    let citiesInProduction = 0
-    let citiesInValidation = 0
+    // Calculate vehicles in each category
+    const productionVehicles = citiesInProduction * inputs.vehiclesPerCity
+    const validationVehicles = citiesInValidation * inputs.vehiclesPerCity
     
-    for (let year = 1; year <= currentYear; year++) {
-      const citiesAddedThisYear = Math.min(inputs.citiesPerYear, inputs.targetCities - (year - 1) * inputs.citiesPerYear)
-      if (citiesAddedThisYear <= 0) break
-      
-      const yearsActive = currentYear - year + 1
-      if (yearsActive >= inputs.cityRampTime) {
-        citiesInProduction += citiesAddedThisYear
-      } else {
-        citiesInValidation += citiesAddedThisYear
-      }
-    }
+    // Calculate vehicles added this year
+    const vehiclesAddedThisYear = inputs.citiesPerYear * inputs.vehiclesPerCity
     
-    const vehiclesInProduction = citiesInProduction * inputs.vehiclesPerCity
-    const vehiclesInValidation = citiesInValidation * inputs.vehiclesPerCity
-    const vehiclesAddedThisYear = Math.min(inputs.citiesPerYear, inputs.targetCities) * inputs.vehiclesPerCity
+    // Calculate total based on ramp progress
+    const totalCalculated = productionVehicles + validationVehicles
 
     return {
-      total: totalVehicles,
-      production: vehiclesInProduction,
-      validation: vehiclesInValidation,
+      total: totalCalculated,
+      production: productionVehicles,
+      validation: validationVehicles,
       addedThisYear: vehiclesAddedThisYear
     }
   }
@@ -96,7 +88,7 @@ export function FleetCounters({ inputs, outputs }: FleetCountersProps) {
 
   useEffect(() => {
     setPreviousValues(metrics)
-  }, [inputs.targetCities, inputs.citiesPerYear, inputs.vehiclesPerCity, inputs.cityRampTime])
+  }, [inputs.citiesPerYear, inputs.vehiclesPerCity, inputs.rampTimePerCity])
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">

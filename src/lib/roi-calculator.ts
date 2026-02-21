@@ -1,13 +1,18 @@
 // Core ROI calculation engine for autonomy scale economics
 
 export interface ROIInputs {
-  fixedInvestment: number // Total autonomy investment in billions
-  profitPerMile: number // Profit per mile in dollars
+  startYear: number // Starting year for simulation
+  yearsToSimulate: number // Number of years to simulate
   citiesPerYear: number // Cities launched per year
-  targetCities: number // Total target cities
   vehiclesPerCity: number // Vehicles per city at full scale
-  milesPerVehiclePerYear: number // Miles per vehicle per year
-  cityRampTime: number // Years to reach full production per city
+  profitPerMile: number // Profit per mile in dollars
+  annualRDSpend: number // Annual R&D spend in billions
+  rampTimePerCity: number // Years to reach full production per city
+  paidTripsPerWeekPerCity: number // Paid trips per week per city at maturity
+  avgTripMiles: number // Average trip length in miles
+  validationMilesPerCity: number // Validation miles per city in millions
+  validationFleetPerCity: number // Validation vehicles per city
+  validationMilesPerVehiclePerDay: number // Validation miles per vehicle per day
 }
 
 export interface ROIOutputs {
@@ -38,168 +43,111 @@ export interface YearlyData {
   cumulativeValidationMiles: number
   productionTrips: number
   cumulativeProductionTrips: number
-  yearlyProfit: number
-  cumulativeProfit: number
-  netProfit: number // Cumulative profit minus fixed investment
+  paidTripsPerWeek: number
+  annualRDSpend: number
+  cumulativeRDSpend: number
+  operatingProfit: number
+  cumulativeOperatingProfit: number
+  netCashFlow: number // Operating profit minus R&D
+  cumulativeNetCash: number // Cumulative net cash (can go negative)
   roi: number // ROI as percentage
 }
 
 export class ROICalculator {
-  static calculate(inputs: ROIInputs): ROIOutputs {
+  static calculate(inputs: ROIInputs, profileMultipliers?: any): ROIOutputs {
     // Get simulation results
-    const simulationResult = this.simulate(inputs)
-    
-    // Calculate required cities for 5-year breakeven
-    const requiredCitiesFor5YearBreakeven = this.calculateRequiredCitiesForBreakeven(inputs, 5)
+    const simulationResult = this.simulate(inputs, profileMultipliers)
     
     // Calculate additional derived metrics
-    const year5Data = simulationResult.yearlyData[4] // Index 4 = Year 5
-    const year10Data = simulationResult.yearlyData[9] // Index 9 = Year 10
+    const year5Index = Math.min(4, simulationResult.yearlyData.length - 1)
+    const year10Index = Math.min(9, simulationResult.yearlyData.length - 1)
+    const year5Data = simulationResult.yearlyData[year5Index]
+    const year10Data = simulationResult.yearlyData[year10Index]
 
     return {
-      breakEvenYear: simulationResult.breakEvenYear,
-      roiYear5: simulationResult.roiYear5,
-      roiYear10: simulationResult.roiYear10,
+      ...simulationResult,
       totalNetworkMiles5y: year5Data?.cumulativeMiles || 0,
       totalNetworkMiles10y: year10Data?.cumulativeMiles || 0,
-      rdAmortizedPerMile5y: year5Data ? inputs.fixedInvestment * 1e9 / year5Data.cumulativeMiles : 0,
-      rdAmortizedPerMile10y: year10Data ? inputs.fixedInvestment * 1e9 / year10Data.cumulativeMiles : 0,
-      requiredCitiesFor5YearBreakeven,
-      yearlyData: simulationResult.yearlyData
+      rdAmortizedPerMile5y: year5Data ? (simulationResult.totalRDSpend) / year5Data.cumulativeMiles : 0,
+      rdAmortizedPerMile10y: year10Data ? (simulationResult.totalRDSpend) / year10Data.cumulativeMiles : 0,
+      requiredCitiesFor5YearBreakeven: 50 // Placeholder for now
     }
   }
 
-  private static simulate(inputs: ROIInputs) {
+  private static simulate(inputs: ROIInputs, profileMultipliers?: any): { 
+    yearlyData: YearlyData[], 
+    breakEvenYear: number | null, 
+    roiYear5: number, 
+    roiYear10: number,
+    totalRDSpend: number
+  } {
     const yearlyData: YearlyData[] = []
+    let totalRDSpend = 0
     let breakEvenYear: number | null = null
     
-    // Calculate for 15 years to ensure we capture long-term trends
-    for (let year = 1; year <= 15; year++) {
-      const data = this.calculateYearData(year, inputs, yearlyData)
-      yearlyData.push(data)
+    // Calculate total cities needed (estimate based on years and cities per year)
+    const totalCities = inputs.citiesPerYear * Math.ceil(inputs.yearsToSimulate * 0.8) // Conservative estimate
+    
+    // Simulate each year
+    for (let yearOffset = 0; yearOffset < inputs.yearsToSimulate; yearOffset++) {
+      const currentYear = inputs.startYear + yearOffset
+      const yearData = this.calculateYearData(currentYear, yearOffset + 1, inputs, yearlyData, profileMultipliers, totalCities)
+      yearlyData.push(yearData)
+      totalRDSpend += yearData.annualRDSpend * 1e9 // Convert to dollars
       
-      // Check for break-even (first year where net profit >= 0)
-      if (breakEvenYear === null && data.netProfit >= 0) {
-        breakEvenYear = year
+      // Check for break-even
+      if (!breakEvenYear && yearData.cumulativeNetCash >= 0) {
+        breakEvenYear = currentYear
       }
     }
-
-    const year5Data = yearlyData[4] // Index 4 = Year 5
-    const year10Data = yearlyData[9] // Index 9 = Year 10
+    
+    // Calculate ROI for specific years
+    const year5Index = Math.min(4, yearlyData.length - 1)
+    const year10Index = Math.min(9, yearlyData.length - 1)
+    const year5Data = yearlyData[year5Index]
+    const year10Data = yearlyData[year10Index]
 
     return {
       yearlyData,
       breakEvenYear,
       roiYear5: year5Data?.roi || 0,
-      roiYear10: year10Data?.roi || 0
+      roiYear10: year10Data?.roi || 0,
+      totalRDSpend
     }
   }
 
-  private static calculateYearData(year: number, inputs: ROIInputs, previousData: YearlyData[]): YearlyData {
-    // Calculate cities launched this year
-    const citiesLaunched = Math.min(inputs.citiesPerYear, Math.max(0, inputs.targetCities - (year - 1) * inputs.citiesPerYear))
-    
-    // Calculate total cities launched by this year
-    const totalCities = Math.min(inputs.targetCities, year * inputs.citiesPerYear)
-    
-    // Calculate total vehicles across all cities, split by production/validation
-    let totalVehicles = 0
-    let vehiclesProduction = 0
-    let vehiclesValidation = 0
-    
-    for (let cityYear = 1; cityYear <= year; cityYear++) {
-      const citiesLaunchedInYear = Math.min(
-        inputs.citiesPerYear,
-        Math.max(0, inputs.targetCities - (cityYear - 1) * inputs.citiesPerYear)
-      )
-      
-      if (citiesLaunchedInYear <= 0) continue
-      
-      const yearsActive = year - cityYear + 1
-      const rampProgress = Math.min(1, yearsActive / inputs.cityRampTime)
-      const vehiclesThisYear = citiesLaunchedInYear * inputs.vehiclesPerCity * rampProgress
-      
-      totalVehicles += vehiclesThisYear
-      
-      // Split production vs validation based on ramp time
-      if (yearsActive >= inputs.cityRampTime) {
-        vehiclesProduction += vehiclesThisYear
-      } else {
-        vehiclesValidation += vehiclesThisYear
-      }
-    }
-
-    // Calculate vehicles added this year
-    const previousTotalVehicles = previousData[previousData.length - 1]?.totalVehicles || 0
-    const vehiclesAddedThisYear = totalVehicles - previousTotalVehicles
-
-    // Calculate miles breakdown
-    const averageTripLength = 6 // miles per trip (reasonable urban average)
-    const validationUtilization = 0.3 // Validation vehicles run at 30% utilization
-    
-    const productionMiles = vehiclesProduction * inputs.milesPerVehiclePerYear
-    const validationMiles = vehiclesValidation * inputs.milesPerVehiclePerYear * validationUtilization
-    const yearlyMiles = productionMiles + validationMiles
-    
-    // Calculate trips (production only)
-    const productionTrips = Math.round(productionMiles / averageTripLength)
-    
-    // Calculate cumulative values
-    const previousCumulativeMiles = previousData[previousData.length - 1]?.cumulativeMiles || 0
-    const previousCumulativeProductionMiles = previousData[previousData.length - 1]?.cumulativeProductionMiles || 0
-    const previousCumulativeValidationMiles = previousData[previousData.length - 1]?.cumulativeValidationMiles || 0
-    const previousCumulativeProductionTrips = previousData[previousData.length - 1]?.cumulativeProductionTrips || 0
-    
-    const cumulativeMiles = previousCumulativeMiles + yearlyMiles
-    const cumulativeProductionMiles = previousCumulativeProductionMiles + productionMiles
-    const cumulativeValidationMiles = previousCumulativeValidationMiles + validationMiles
-    const cumulativeProductionTrips = previousCumulativeProductionTrips + productionTrips
-    
-    // Calculate profits
-    const yearlyProfit = yearlyMiles * inputs.profitPerMile
-    const previousCumulativeProfit = previousData[previousData.length - 1]?.cumulativeProfit || 0
-    const cumulativeProfit = previousCumulativeProfit + yearlyProfit
-    
-    const fixedInvestmentDollars = inputs.fixedInvestment * 1e9 // Convert billions to dollars
-    const netProfit = cumulativeProfit - fixedInvestmentDollars
-    const roi = (netProfit / fixedInvestmentDollars) * 100
-
+  private static calculateYearData(year: number, yearOffset: number, inputs: ROIInputs, previousData: YearlyData[], profileMultipliers?: any, maxCities?: number): YearlyData {
+    // Placeholder implementation - this will be replaced by ProfileCalculator
     return {
       year,
-      citiesLaunched,
-      totalCities,
-      totalVehicles: Math.round(totalVehicles),
-      vehiclesProduction: Math.round(vehiclesProduction),
-      vehiclesValidation: Math.round(vehiclesValidation),
-      vehiclesAddedThisYear: Math.round(vehiclesAddedThisYear),
-      yearlyMiles,
-      cumulativeMiles,
-      productionMiles,
-      validationMiles,
-      cumulativeProductionMiles,
-      cumulativeValidationMiles,
-      productionTrips,
-      cumulativeProductionTrips,
-      yearlyProfit,
-      cumulativeProfit,
-      netProfit,
-      roi
+      citiesLaunched: 0,
+      totalCities: 0,
+      totalVehicles: 0,
+      vehiclesProduction: 0,
+      vehiclesValidation: 0,
+      vehiclesAddedThisYear: 0,
+      yearlyMiles: 0,
+      cumulativeMiles: 0,
+      productionMiles: 0,
+      validationMiles: 0,
+      cumulativeProductionMiles: 0,
+      cumulativeValidationMiles: 0,
+      productionTrips: 0,
+      cumulativeProductionTrips: 0,
+      paidTripsPerWeek: 0,
+      annualRDSpend: 0,
+      cumulativeRDSpend: 0,
+      operatingProfit: 0,
+      cumulativeOperatingProfit: 0,
+      netCashFlow: 0,
+      cumulativeNetCash: 0,
+      roi: 0
     }
   }
 
   private static calculateRequiredCitiesForBreakeven(inputs: ROIInputs, targetYear: number): number {
-    // Iterate through candidate city counts to find minimum needed for break-even in target year
-    for (let candidate = 1; candidate <= 500; candidate++) {
-      const modifiedInputs = { ...inputs, targetCities: candidate }
-      const simulationResult = this.simulate(modifiedInputs)
-      
-      if (simulationResult.breakEvenYear !== null && simulationResult.breakEvenYear <= targetYear) {
-        return candidate
-      }
-    }
-    
-    // If no solution found within reasonable bounds, return a high number
-    return 500
+    // Placeholder implementation
+    return 50
   }
 
   // Helper method to format large numbers

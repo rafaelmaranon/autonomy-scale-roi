@@ -2,27 +2,27 @@
 
 import { useState, useEffect } from 'react'
 import { ChevronDown, RotateCcw, MessageCircle, Settings } from 'lucide-react'
-import { ROIInputs, ROIOutputs, ROICalculator } from '@/lib/roi-calculator'
-import { presets, getPresetByName } from '@/lib/presets'
+import { ProfileInputs, ProfileOutputs, ProfileCalculator } from '@/lib/profile-calculator'
+import { profiles, ProfileConfig, getProfileByName } from '@/lib/profiles'
 import { analytics } from '@/lib/analytics'
 import { CompactHeroMetrics } from './CompactHeroMetrics'
-import { CompactInputPanel } from './CompactInputPanel'
+// import { CompactInputPanel } from './CompactInputPanel' // Temporarily disabled
 import { CompactChart } from './CompactChart'
 import { CompactFleetCounters } from './CompactFleetCounters'
 import { CompactThroughputCounters } from './CompactThroughputCounters'
 import { CompactNetworkMap } from './CompactNetworkMap'
-import { InsightChips } from './InsightChips'
-import { DetailsSection } from './DetailsSection'
-import { StrategicMobileBottomSheet } from './StrategicMobileBottomSheet'
+// import { InsightChips } from './InsightChips' // Temporarily disabled
+// import { DetailsSection } from './DetailsSection' // Temporarily disabled
+// import { StrategicMobileBottomSheet } from './StrategicMobileBottomSheet' // Temporarily disabled
 // import { AskAI } from './AskAI'
 
 export function AutonomyROISimulator() {
-  const [inputs, setInputs] = useState<ROIInputs>(presets[1].inputs) // Start with Base Case
-  const [outputs, setOutputs] = useState<ROIOutputs | null>(null)
-  const [selectedPreset, setSelectedPreset] = useState<string>('Base Case')
+  const [inputs, setInputs] = useState<ProfileInputs>(profiles[0].inputs) // Start with Waymo
+  const [outputs, setOutputs] = useState<ProfileOutputs | null>(null)
+  const [selectedProfile, setSelectedProfile] = useState<string>('Waymo')
   const [showAI, setShowAI] = useState(false)
   const [showMobileControls, setShowMobileControls] = useState(false)
-  const [activeYearIndex, setActiveYearIndex] = useState<number>(9) // Default to Year 10 (index 9)
+  const [activeYearIndex, setActiveYearIndex] = useState<number>(45) // Default to final year (2050)
 
   // Initialize analytics on mount (client-side only)
   useEffect(() => {
@@ -37,44 +37,41 @@ export function AutonomyROISimulator() {
     return () => clearTimeout(timer)
   }, [])
 
-  // Recalculate outputs when inputs change
+  // Calculate outputs whenever inputs change
   useEffect(() => {
-    const newOutputs = ROICalculator.calculate(inputs)
-    setOutputs(newOutputs)
-    
-    analytics.logEvent('run_started', {
-      inputs: inputs,
-      preset: selectedPreset
-    })
-    
-    analytics.logEvent('run_completed', {
-      breakEvenYear: newOutputs.breakEvenYear,
-      roiYear5: newOutputs.roiYear5,
-      roiYear10: newOutputs.roiYear10
-    })
-  }, [inputs, selectedPreset])
-
-  const handlePresetChange = (presetName: string) => {
-    const preset = getPresetByName(presetName)
-    if (preset) {
-      setSelectedPreset(presetName)
-      setInputs(preset.inputs)
+    const profile = getProfileByName(selectedProfile)
+    if (profile) {
+      const newOutputs = ProfileCalculator.calculate(inputs, profile.multipliers)
+      setOutputs(newOutputs)
       
-      analytics.logEvent('preset_selected', {
-        preset: presetName,
-        inputs: preset.inputs
+      analytics.logEvent('run_started', {
+        profile: selectedProfile
+      })
+    }
+  }, [inputs, selectedProfile])
+
+  const handleProfileChange = (profileName: string) => {
+    const profile = getProfileByName(profileName)
+    if (profile) {
+      setSelectedProfile(profileName)
+      setInputs(profile.inputs)
+      setActiveYearIndex(profile.inputs.yearsToSimulate - 1) // Reset to final year
+      
+      analytics.logEvent('profile_selected', {
+        profile: profileName,
+        inputs: profile.inputs
       })
     }
   }
 
-  const handleInputChange = (field: keyof ROIInputs, value: number) => {
+  const handleInputChange = (field: keyof ProfileInputs, value: number) => {
     setInputs(prev => ({ ...prev, [field]: value }))
-    setActiveYearIndex(9) // Reset to Year 10 when inputs change
-    setSelectedPreset('Custom') // Mark as custom when user modifies inputs
+    setActiveYearIndex(inputs.yearsToSimulate - 1) // Reset to final year when inputs change
+    setSelectedProfile('Custom') // Mark as custom when user modifies inputs
     analytics.logEvent('input_change', {
       field,
       value,
-      preset: selectedPreset
+      profile: selectedProfile
     })
   }
 
@@ -86,12 +83,13 @@ export function AutonomyROISimulator() {
   }
 
   const handleReset = () => {
-    const baseCase = getPresetByName('Base Case')
-    if (baseCase) {
-      setInputs(baseCase.inputs)
-      setSelectedPreset('Base Case')
+    const waymoProfile = getProfileByName('Waymo')
+    if (waymoProfile) {
+      setInputs(waymoProfile.inputs)
+      setSelectedProfile('Waymo')
+      setActiveYearIndex(waymoProfile.inputs.yearsToSimulate - 1)
       analytics.logEvent('preset_selected', {
-        preset: 'Base Case',
+        preset: 'Waymo',
         action: 'reset'
       })
     }
@@ -111,7 +109,7 @@ export function AutonomyROISimulator() {
   }
 
   const handleChartLeave = () => {
-    setActiveYearIndex(9) // Revert to Year 10 (final state)
+    setActiveYearIndex(inputs.yearsToSimulate - 1) // Revert to final year
   }
 
   return (
@@ -126,16 +124,16 @@ export function AutonomyROISimulator() {
             </div>
             
             <div className="flex items-center space-x-3">
-              {/* Presets Dropdown */}
+              {/* Profile Dropdown */}
               <div className="relative">
                 <select
-                  value={selectedPreset}
-                  onChange={(e) => handlePresetChange(e.target.value)}
+                  value={selectedProfile}
+                  onChange={(e) => handleProfileChange(e.target.value)}
                   className="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-1.5 pr-7 text-xs font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  {presets.map((preset) => (
-                    <option key={preset.name} value={preset.name}>
-                      {preset.name}
+                  {profiles.map((profile) => (
+                    <option key={profile.name} value={profile.name}>
+                      {profile.name}
                     </option>
                   ))}
                 </select>
@@ -163,10 +161,26 @@ export function AutonomyROISimulator() {
             <div className="hidden lg:grid lg:grid-cols-12 gap-4 h-full">
               {/* Left Column - Parameters (25-30%) */}
               <div className="lg:col-span-3">
-                <CompactInputPanel
-                  inputs={inputs}
-                  onInputChange={handleInputChange}
-                />
+                {/* Profile Selector */}
+                <div className="bg-white rounded-lg border border-gray-200 p-3 mb-3">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-2">Profile</h3>
+                  <div className="space-y-2">
+                    {profiles.map((profile) => (
+                      <button
+                        key={profile.name}
+                        onClick={() => handleProfileChange(profile.name)}
+                        className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                          selectedProfile === profile.name
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        <div className="font-medium">{profile.name}</div>
+                        <div className="text-xs opacity-75">{profile.description}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               {/* Right Side - Metrics + Chart/Map (70-75%) */}
@@ -184,11 +198,11 @@ export function AutonomyROISimulator() {
                 <div className="grid grid-cols-2 gap-4 flex-1">
                   <CompactChart 
                     data={outputs.yearlyData} 
-                    fixedInvestment={inputs.fixedInvestment}
+                    annualRDSpend={inputs.annualRDSpend}
                     onHover={handleChartHover}
                     onMouseLeave={handleChartLeave}
                   />
-                  <CompactNetworkMap inputs={inputs} outputs={outputs} selectedPreset={selectedPreset} />
+                  <CompactNetworkMap inputs={inputs} outputs={outputs} selectedPreset={selectedProfile} />
                 </div>
               </div>
             </div>
@@ -201,13 +215,13 @@ export function AutonomyROISimulator() {
               {/* Chart */}
               <CompactChart 
                 data={outputs.yearlyData} 
-                fixedInvestment={inputs.fixedInvestment}
+                annualRDSpend={inputs.annualRDSpend}
                 onHover={handleChartHover}
                 onMouseLeave={handleChartLeave}
               />
               
               {/* Map */}
-              <CompactNetworkMap inputs={inputs} outputs={outputs} selectedPreset={selectedPreset} />
+              <CompactNetworkMap inputs={inputs} outputs={outputs} selectedPreset={selectedProfile} />
               
               {/* Fleet Counters */}
               <CompactFleetCounters yearData={outputs.yearlyData[activeYearIndex]} />
@@ -219,25 +233,14 @@ export function AutonomyROISimulator() {
         )}
       </main>
 
-      {/* Mobile Controls - Floating Button */}
-      <button
+      {/* Mobile Controls - Temporarily disabled */}
+      {/* <button
         onClick={() => setShowMobileControls(true)}
         className="lg:hidden fixed bottom-6 right-6 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-full shadow-lg transition-colors z-40 flex items-center space-x-2"
       >
         <Settings size={20} />
         <span className="text-sm font-medium">Controls</span>
-      </button>
-
-      {/* Strategic Mobile Bottom Sheet */}
-      <StrategicMobileBottomSheet
-        isOpen={showMobileControls}
-        onClose={() => setShowMobileControls(false)}
-        inputs={inputs}
-        selectedPreset={selectedPreset}
-        onPresetChange={handlePresetChange}
-        onInputChange={handleInputChange}
-        onReset={handleReset}
-      />
+      </button> */}
 
       {/* Desktop Ask AI Modal - Temporarily disabled */}
       {/* {showAI && outputs && (

@@ -1,6 +1,6 @@
 'use client'
 
-import { AutonomyROISimulator } from '@/components/AutonomyROISimulator'
+import { V1Simulator } from '@/components/V1Simulator'
 import { ClientOnly } from '@/components/ClientOnly'
 
 export default function Home() {
@@ -13,7 +13,7 @@ export default function Home() {
         </div>
       </div>
     }>
-      <AutonomyROISimulator />
+      <V1Simulator />
     </ClientOnly>
   )
 }

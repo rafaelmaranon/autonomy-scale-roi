@@ -6,6 +6,7 @@ export type AnalyticsEvent =
   | 'page_view'
   | 'session_start'
   | 'preset_selected'
+  | 'profile_selected'
   | 'input_change'
   | 'run_started'
   | 'week_advanced'

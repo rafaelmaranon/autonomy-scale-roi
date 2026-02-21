@@ -117,7 +117,7 @@ export function AskAI({ inputs, outputs, onClose }: AskAIProps) {
           <div className="bg-gray-50 rounded-lg p-4">
             <h3 className="font-medium text-gray-900 mb-2">Current Scenario</h3>
             <div className="text-sm text-gray-600 space-y-1">
-              <p>• Fixed Investment: ${inputs.fixedInvestment}B</p>
+              <p>• Annual R&D: ${inputs.annualRDSpend}B</p>
               <p>• Profit per Mile: ${inputs.profitPerMile}</p>
               <p>• Launch Rate: {inputs.citiesPerYear} cities/year</p>
               <p>• Break-even: {outputs.breakEvenYear ? `Year ${outputs.breakEvenYear}` : 'Never'}</p>

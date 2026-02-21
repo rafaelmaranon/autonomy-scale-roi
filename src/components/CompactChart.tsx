@@ -4,15 +4,15 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { YearlyData } from '@/lib/roi-calculator'
 
 interface CompactChartProps {
-  data: YearlyData[]
-  fixedInvestment: number
+  data: any[] // Will be ProfileYearlyData[]
+  annualRDSpend?: number
   onHover?: (yearIndex: number) => void
   onMouseLeave?: () => void
 }
 
-export function CompactChart({ data, fixedInvestment, onHover, onMouseLeave }: CompactChartProps) {
+export function CompactChart({ data, annualRDSpend, onHover, onMouseLeave }: CompactChartProps) {
   // Find break-even point
-  const breakEvenPoint = data.find(d => d.netProfit >= 0)
+  const breakEvenPoint = data.find(d => d.cumulativeNetCash >= 0)
 
   // Custom tooltip
   const CustomTooltip = ({ active, payload, label }: any) => {
@@ -22,7 +22,7 @@ export function CompactChart({ data, fixedInvestment, onHover, onMouseLeave }: C
         <div className="bg-white p-2 border border-gray-200 rounded shadow-sm text-xs">
           <p className="font-medium">Year {label}</p>
           <p className="text-blue-600">
-            Profit: ${(data.cumulativeProfit / 1e9).toFixed(1)}B
+            Net Cash: ${(data.cumulativeNetCash / 1e9).toFixed(1)}B
           </p>
           <p className="text-gray-600">
             ROI: {data.roi.toFixed(1)}%
@@ -69,9 +69,9 @@ export function CompactChart({ data, fixedInvestment, onHover, onMouseLeave }: C
             />
             <Tooltip content={<CustomTooltip />} />
             
-            {/* Fixed Investment line */}
+            {/* Zero line */}
             <ReferenceLine 
-              y={-fixedInvestment * 1e9} 
+              y={0} 
               stroke="#ef4444" 
               strokeWidth={2}
               strokeDasharray="4 4"
@@ -87,10 +87,10 @@ export function CompactChart({ data, fixedInvestment, onHover, onMouseLeave }: C
               />
             )}
             
-            {/* Cumulative Profit line */}
+            {/* Cumulative Net Cash line */}
             <Line 
               type="monotone" 
-              dataKey="cumulativeProfit" 
+              dataKey="cumulativeNetCash" 
               stroke="#3b82f6" 
               strokeWidth={3}
               dot={false}
@@ -104,16 +104,16 @@ export function CompactChart({ data, fixedInvestment, onHover, onMouseLeave }: C
       <div className="flex items-center justify-center space-x-4 mt-2 text-xs text-gray-600">
         <div className="flex items-center space-x-1">
           <div className="w-3 h-0.5 bg-blue-500"></div>
-          <span>Cumulative Profit</span>
+          <span>Cumulative Net Cash</span>
         </div>
         <div className="flex items-center space-x-1">
           <div className="w-3 h-0.5 bg-red-500 border-dashed border-t"></div>
-          <span>Fixed Investment</span>
+          <span>Zero Line</span>
         </div>
         {breakEvenPoint && (
           <div className="flex items-center space-x-1">
             <div className="w-3 h-0.5 bg-green-500 border-dashed border-t"></div>
-            <span>Break-even (Y{breakEvenPoint.year})</span>
+            <span>Break-even ({breakEvenPoint.year})</span>
           </div>
         )}
       </div>
