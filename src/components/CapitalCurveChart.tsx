@@ -159,12 +159,12 @@ export function CapitalCurveChart({ data, chartView = 'netCash', onHover, onMous
           />
           
           {/* Historical anchor dots - only for Net Cash view */}
-          {chartView === 'netCash' && WAYMO_PUBLIC_ANCHORS.map((anchor) => {
+          {chartView === 'netCash' && WAYMO_PUBLIC_ANCHORS.map((anchor, index) => {
             const dataPoint = data.find(d => d.year === anchor.year)
             if (dataPoint) {
               return (
                 <Line
-                  key={`anchor-${anchor.year}`}
+                  key={`anchor-${anchor.year}-${index}`}
                   type="monotone"
                   dataKey="cumulativeNetCash"
                   stroke="transparent"
