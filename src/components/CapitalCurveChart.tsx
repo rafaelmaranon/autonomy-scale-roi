@@ -2,6 +2,7 @@
 
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Area, AreaChart } from 'recharts'
 import { SimYearData } from '@/lib/sim-types'
+import { WAYMO_PUBLIC_ANCHORS, getDataPeriod } from '@/lib/historical-anchors'
 
 interface CapitalCurveChartProps {
   data: SimYearData[]
@@ -14,17 +15,36 @@ export function CapitalCurveChart({ data, onHover, onMouseLeave }: CapitalCurveC
   const breakEvenPoint = data.find(d => d.cumulativeNetCash >= 0)
   const currentYear = 2025
 
-  // Custom tooltip
+  // Custom tooltip with historical anchor information
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       const yearData = payload[0].payload
-      const phase = label <= 2017 ? 'Pure R&D' : 
-                   label <= 2024 ? 'Limited Commercial' : 
-                   'Full Scaling'
+      const dataPeriod = getDataPeriod(label)
+      const periodLabel = dataPeriod === 'PRE_COMMERCIAL' ? 'Modeled (pre-commercial)' :
+                         dataPeriod === 'ANCHORED' ? 'Anchored to public data' :
+                         'Modeled projection'
+      
+      // Check if this year has historical anchors
+      const anchors = WAYMO_PUBLIC_ANCHORS.filter(anchor => anchor.year === label)
+      
       return (
-        <div className="bg-white p-3 border border-gray-200 rounded shadow-lg text-sm">
+        <div className="bg-white p-3 border border-gray-200 rounded shadow-lg text-sm max-w-xs">
           <p className="font-medium text-gray-900 mb-1">{label}</p>
-          <p className="text-xs text-gray-500 mb-2">{phase}</p>
+          <p className="text-xs text-gray-500 mb-2">{periodLabel}</p>
+          
+          {anchors.length > 0 && (
+            <div className="mb-2 p-2 bg-green-50 rounded border-l-2 border-green-200">
+              <p className="text-xs font-medium text-green-800 mb-1">Historical Anchor:</p>
+              {anchors.map((anchor, i) => (
+                <p key={i} className="text-xs text-green-700">
+                  {anchor.value >= 1000000 ? `${(anchor.value / 1000000).toFixed(1)}M` : 
+                   anchor.value >= 1000 ? `${(anchor.value / 1000).toFixed(0)}k` : 
+                   anchor.value.toLocaleString()} {anchor.unit}
+                </p>
+              ))}
+            </div>
+          )}
+          
           <p className="text-blue-600">
             Net Cash: ${(yearData.cumulativeNetCash / 1e9).toFixed(1)}B
           </p>
@@ -111,6 +131,25 @@ export function CapitalCurveChart({ data, onHover, onMouseLeave }: CapitalCurveC
             stroke="#374151" 
             strokeWidth={2}
             strokeDasharray="4 4"
+          />
+          
+          {/* Historical anchor markers */}
+          {WAYMO_PUBLIC_ANCHORS.map((anchor, index) => (
+            <ReferenceLine 
+              key={index}
+              x={anchor.year} 
+              stroke="#16a34a" 
+              strokeWidth={1}
+              strokeDasharray="1 1"
+            />
+          ))}
+          
+          {/* Last public datapoint marker (2026) */}
+          <ReferenceLine 
+            x={2026} 
+            stroke="#6b7280" 
+            strokeWidth={1}
+            strokeDasharray="3 1"
           />
           
           {/* Break-even marker - only when cumulative net cash >= 0 */}

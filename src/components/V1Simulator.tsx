@@ -6,12 +6,14 @@ import { SimInputs, SimOutputs, SimYearData, ProfileConfig, profiles, getProfile
 import { SimCalculator } from '@/lib/sim-calculator'
 import { analytics } from '@/lib/analytics'
 import { CapitalCurveChart } from './CapitalCurveChart'
+import { HistoricalSourcesModal } from './HistoricalSourcesModal'
 
 export function V1Simulator() {
   const [inputs, setInputs] = useState<SimInputs>(profiles[0].inputs) // Start with Waymo
   const [outputs, setOutputs] = useState<SimOutputs | null>(null)
   const [selectedProfile, setSelectedProfile] = useState<string>('Waymo')
   const [activeYearIndex, setActiveYearIndex] = useState<number>(45) // Default to final year
+  const [showSourcesModal, setShowSourcesModal] = useState<boolean>(false)
 
   // Calculate outputs whenever inputs change
   useEffect(() => {
@@ -253,7 +255,17 @@ export function V1Simulator() {
               <div className="lg:col-span-9 grid grid-cols-2 gap-4">
                 {/* Chart - Cumulative Net Cash */}
                 <div className="bg-white rounded-lg border border-gray-200 p-3">
-                  <h3 className="text-sm font-semibold text-gray-900 mb-2">Capital Cycle (2004–2050)</h3>
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="text-sm font-semibold text-gray-900">Capital Cycle (2004–2050)</h3>
+                    {selectedProfile === 'Waymo' && (
+                      <button
+                        onClick={() => setShowSourcesModal(true)}
+                        className="text-xs text-blue-600 hover:text-blue-800 underline transition-colors"
+                      >
+                        Historical data sources
+                      </button>
+                    )}
+                  </div>
                   <div className="h-80">
                     <CapitalCurveChart 
                       data={outputs.yearlyData}
@@ -295,6 +307,12 @@ export function V1Simulator() {
           </>
         )}
       </main>
+
+      {/* Historical Sources Modal */}
+      <HistoricalSourcesModal 
+        isOpen={showSourcesModal}
+        onClose={() => setShowSourcesModal(false)}
+      />
     </div>
   )
 }
