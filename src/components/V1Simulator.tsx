@@ -22,6 +22,14 @@ export function V1Simulator() {
     const profile = getProfileByName(selectedProfile)
     if (profile) {
       const newOutputs = SimCalculator.calculate(inputs, profile.multipliers)
+      
+      // Verify full timeline is generated
+      if (newOutputs.yearlyData.length > 0) {
+        const firstYear = newOutputs.yearlyData[0].year
+        const lastYear = newOutputs.yearlyData[newOutputs.yearlyData.length - 1].year
+        console.log(`Timeline: ${firstYear}-${lastYear} (${newOutputs.yearlyData.length} years)`)
+      }
+      
       setOutputs(newOutputs)
       setActiveYearIndex(newOutputs.yearlyData.length - 1) // Set to final year
       

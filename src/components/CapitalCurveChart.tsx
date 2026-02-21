@@ -96,12 +96,9 @@ export function CapitalCurveChart({ data, chartView = 'netCash', onHover, onMous
         <LineChart
           data={data}
           margin={{ top: 10, right: 10, left: 50, bottom: 20 }}
-          onMouseMove={(event: any) => {
-            if (event && event.activeLabel && onHover) {
-              const yearIndex = data.findIndex(d => d.year === event.activeLabel)
-              if (yearIndex >= 0) {
-                onHover(yearIndex)
-              }
+          onMouseMove={(state: any) => {
+            if (state?.activeTooltipIndex != null && onHover) {
+              onHover(state.activeTooltipIndex)
             }
           }}
           onMouseLeave={() => {
