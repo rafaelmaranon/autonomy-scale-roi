@@ -1,63 +1,17 @@
 // Profile-based ROI calculation engine for autonomy deployment scenarios
 
-export interface ProfileInputs {
-  startYear: number
-  yearsToSimulate: number
-  citiesPerYear: number
-  vehiclesPerCity: number
-  profitPerMile: number
-  annualRDSpend: number // in billions
-  rampTimePerCity: number
-  paidTripsPerWeekPerCity: number
-  avgTripMiles: number
-  validationMilesPerCity: number // in millions
-  validationFleetPerCity: number
-  validationMilesPerVehiclePerDay: number
-}
+import { SimInputs, SimYearData, SimOutputs } from './sim-types'
 
 export interface ProfileMultipliers {
   rdTaperAfterBreakeven: number
-  productionMilesPerVehiclePerDay: number
+  productionUtilization: number
   validationUtilization: number
 }
 
-export interface ProfileYearlyData {
-  year: number
-  citiesLaunched: number
-  totalCities: number
-  totalVehicles: number
-  vehiclesProduction: number
-  vehiclesValidation: number
-  vehiclesAddedThisYear: number
-  yearlyMiles: number
-  cumulativeMiles: number
-  productionMiles: number
-  validationMiles: number
-  cumulativeProductionMiles: number
-  cumulativeValidationMiles: number
-  productionTrips: number
-  cumulativeProductionTrips: number
-  paidTripsPerWeek: number
-  annualRDSpend: number
-  cumulativeRDSpend: number
-  operatingProfit: number
-  cumulativeOperatingProfit: number
-  netCashFlow: number // Operating profit minus R&D
-  cumulativeNetCash: number // Cumulative net cash (can go negative)
-  roi: number // ROI as percentage based on cumulative R&D
-}
-
-export interface ProfileOutputs {
-  breakEvenYear: number | null
-  roiYear5: number
-  roiYear10: number
-  totalNetworkMiles5y: number
-  totalNetworkMiles10y: number
-  rdAmortizedPerMile5y: number
-  rdAmortizedPerMile10y: number
-  requiredCitiesFor5YearBreakeven: number
-  yearlyData: ProfileYearlyData[]
-}
+// Use SimInputs and SimYearData from sim-types for consistency
+export type ProfileInputs = SimInputs
+export type ProfileYearlyData = SimYearData
+export type ProfileOutputs = SimOutputs
 
 export class ProfileCalculator {
   static calculate(inputs: ProfileInputs, multipliers: ProfileMultipliers): ProfileOutputs {
@@ -86,14 +40,7 @@ export class ProfileCalculator {
       yearlyData,
       breakEvenYear,
       roiYear5: year5Data?.roi || 0,
-      roiYear10: year10Data?.roi || 0,
-      totalNetworkMiles5y: year5Data?.cumulativeMiles || 0,
-      totalNetworkMiles10y: year10Data?.cumulativeMiles || 0,
-      rdAmortizedPerMile5y: year5Data && year5Data.cumulativeMiles > 0 ? 
-        (year5Data.cumulativeRDSpend * 1e9) / year5Data.cumulativeMiles : 0,
-      rdAmortizedPerMile10y: year10Data && year10Data.cumulativeMiles > 0 ? 
-        (year10Data.cumulativeRDSpend * 1e9) / year10Data.cumulativeMiles : 0,
-      requiredCitiesFor5YearBreakeven: 50 // Placeholder
+      roiYear10: year10Data?.roi || 0
     }
   }
 
@@ -132,33 +79,29 @@ export class ProfileCalculator {
       }
     }
     
-    // Add dedicated validation fleet
-    vehiclesValidation += totalCities * inputs.validationFleetPerCity
-    totalVehicles += totalCities * inputs.validationFleetPerCity
+    // Add dedicated validation fleet (simplified calculation)
+    const validationFleetPerCity = 50 // Simplified constant
+    vehiclesValidation += totalCities * validationFleetPerCity
+    totalVehicles += totalCities * validationFleetPerCity
     
     // Calculate vehicles added this year
-    const previousTotalVehicles = previousData[previousData.length - 1]?.totalVehicles || 0
+    const previousTotalVehicles = previousData[previousData.length - 1]?.vehiclesTotal || 0
     const vehiclesAddedThisYear = totalVehicles - previousTotalVehicles
     
     // Calculate miles
-    const productionMiles = vehiclesProduction * multipliers.productionMilesPerVehiclePerDay * 365
-    const validationMiles = vehiclesValidation * inputs.validationMilesPerVehiclePerDay * 365 * multipliers.validationUtilization
+    const productionMiles = vehiclesProduction * multipliers.productionUtilization * 365
+    const validationMiles = vehiclesValidation * multipliers.validationUtilization * 365
     const yearlyMiles = productionMiles + validationMiles
     
-    // Calculate trips (production only)
-    const productionTrips = Math.round(productionMiles / inputs.avgTripMiles)
+    // Calculate trips (production only, 6 miles per trip average)
+    const productionTrips = Math.round(productionMiles / 6)
     const paidTripsPerWeek = Math.round(productionTrips / 52)
     
-    // Calculate cumulative values
+    // Calculate cumulative values (simplified)
     const previousData_ = previousData[previousData.length - 1]
-    const cumulativeMiles = (previousData_?.cumulativeMiles || 0) + yearlyMiles
-    const cumulativeProductionMiles = (previousData_?.cumulativeProductionMiles || 0) + productionMiles
-    const cumulativeValidationMiles = (previousData_?.cumulativeValidationMiles || 0) + validationMiles
-    const cumulativeProductionTrips = (previousData_?.cumulativeProductionTrips || 0) + productionTrips
     
     // Calculate economics
     const operatingProfit = productionMiles * inputs.profitPerMile
-    const cumulativeOperatingProfit = (previousData_?.cumulativeOperatingProfit || 0) + operatingProfit
     
     // R&D with tapering after break-even
     const hasReachedBreakeven = previousData_?.cumulativeNetCash && previousData_.cumulativeNetCash >= 0
@@ -176,25 +119,17 @@ export class ProfileCalculator {
     
     return {
       year: currentYear,
-      citiesLaunched,
-      totalCities,
-      totalVehicles: Math.round(totalVehicles),
+      citiesTotal: Math.round(totalCities),
+      vehiclesTotal: Math.round(totalVehicles),
       vehiclesProduction: Math.round(vehiclesProduction),
       vehiclesValidation: Math.round(vehiclesValidation),
-      vehiclesAddedThisYear: Math.round(vehiclesAddedThisYear),
-      yearlyMiles,
-      cumulativeMiles,
       productionMiles,
       validationMiles,
-      cumulativeProductionMiles,
-      cumulativeValidationMiles,
       productionTrips,
-      cumulativeProductionTrips,
       paidTripsPerWeek,
       annualRDSpend,
       cumulativeRDSpend,
       operatingProfit,
-      cumulativeOperatingProfit,
       netCashFlow,
       cumulativeNetCash,
       roi

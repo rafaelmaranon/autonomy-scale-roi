@@ -15,45 +15,44 @@ export function CapitalCurveChart({ data, onHover, onMouseLeave }: CapitalCurveC
   const breakEvenPoint = data.find(d => d.cumulativeNetCash >= 0)
   const currentYear = 2025
 
-  // Custom tooltip with historical anchor information
+  // Clean tooltip with key metrics
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       const yearData = payload[0].payload
-      const dataPeriod = getDataPeriod(label)
-      const periodLabel = dataPeriod === 'PRE_COMMERCIAL' ? 'Modeled (pre-commercial)' :
-                         dataPeriod === 'ANCHORED' ? 'Anchored to public data' :
-                         'Modeled projection'
       
       // Check if this year has historical anchors
       const anchors = WAYMO_PUBLIC_ANCHORS.filter(anchor => anchor.year === label)
+      const isAnchored = anchors.length > 0
       
       return (
-        <div className="bg-white p-3 border border-gray-200 rounded shadow-lg text-sm max-w-xs">
-          <p className="font-medium text-gray-900 mb-1">{label}</p>
-          <p className="text-xs text-gray-500 mb-2">{periodLabel}</p>
+        <div className="bg-white p-3 border border-gray-200 rounded shadow-lg text-sm">
+          <p className="font-medium text-gray-900 mb-2">{label}</p>
           
-          {anchors.length > 0 && (
-            <div className="mb-2 p-2 bg-green-50 rounded border-l-2 border-green-200">
-              <p className="text-xs font-medium text-green-800 mb-1">Historical Anchor:</p>
-              {anchors.map((anchor, i) => (
-                <p key={i} className="text-xs text-green-700">
-                  {anchor.value >= 1000000 ? `${(anchor.value / 1000000).toFixed(1)}M` : 
-                   anchor.value >= 1000 ? `${(anchor.value / 1000).toFixed(0)}k` : 
-                   anchor.value.toLocaleString()} {anchor.unit}
-                </p>
-              ))}
-            </div>
+          {isAnchored && (
+            <p className="text-xs font-medium text-green-600 mb-2">● Anchored</p>
           )}
           
-          <p className="text-blue-600">
-            Net Cash: ${(yearData.cumulativeNetCash / 1e9).toFixed(1)}B
-          </p>
-          <p className="text-gray-600 text-xs">
-            ROI: {yearData.roi.toFixed(1)}%
-          </p>
-          <p className="text-gray-600 text-xs">
-            Annual R&D: ${yearData.annualRDSpend.toFixed(1)}B
-          </p>
+          <div className="space-y-1">
+            <p className="text-blue-600 font-medium">
+              Net Cash: ${(yearData.cumulativeNetCash / 1e9).toFixed(1)}B
+            </p>
+            
+            <p className="text-gray-600 text-xs">
+              Paid trips/week: {yearData.paidTripsPerWeek.toLocaleString()}
+            </p>
+            
+            <p className="text-gray-600 text-xs">
+              Total trips: {(yearData.productionTrips / 1e6).toFixed(1)}M
+            </p>
+            
+            <p className="text-gray-600 text-xs">
+              Production miles: {(yearData.productionMiles / 1e6).toFixed(0)}M
+            </p>
+            
+            <p className="text-gray-600 text-xs">
+              Validation miles: {(yearData.validationMiles / 1e6).toFixed(0)}M
+            </p>
+          </div>
         </div>
       )
     }
@@ -63,9 +62,9 @@ export function CapitalCurveChart({ data, onHover, onMouseLeave }: CapitalCurveC
   return (
     <div className="h-full">
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart
+        <LineChart
           data={data}
-          margin={{ top: 10, right: 10, left: 40, bottom: 20 }}
+          margin={{ top: 10, right: 10, left: 50, bottom: 20 }}
           onMouseMove={(event: any) => {
             if (event && event.activeLabel && onHover) {
               const yearIndex = data.findIndex(d => d.year === event.activeLabel)
@@ -81,17 +80,17 @@ export function CapitalCurveChart({ data, onHover, onMouseLeave }: CapitalCurveC
           }}
         >
           <defs>
-            <linearGradient id="negativeGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#fee2e2" stopOpacity={0.8} />
-              <stop offset="100%" stopColor="#fecaca" stopOpacity={0.3} />
+            <linearGradient id="debtArea" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#fee2e2" stopOpacity={0.4} />
+              <stop offset="100%" stopColor="#fecaca" stopOpacity={0.2} />
             </linearGradient>
           </defs>
           
-          <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+          <CartesianGrid strokeDasharray="2 2" stroke="#f9fafb" />
           
           <XAxis 
             dataKey="year" 
-            stroke="#6b7280"
+            stroke="#9ca3af"
             fontSize={11}
             tickLine={false}
             axisLine={false}
@@ -100,74 +99,56 @@ export function CapitalCurveChart({ data, onHover, onMouseLeave }: CapitalCurveC
           />
           
           <YAxis 
-            stroke="#6b7280"
+            stroke="#9ca3af"
             fontSize={11}
             tickLine={false}
             axisLine={false}
             tickFormatter={(value) => `$${(value / 1e9).toFixed(0)}B`}
+            domain={['dataMin', 'dataMax']}
+            ticks={[-100, -50, 0, 50, 100, 150]}
           />
           
           <Tooltip content={<CustomTooltip />} />
           
-          {/* Zero line */}
+          {/* Thin gray zero baseline */}
           <ReferenceLine 
             y={0} 
-            stroke="#ef4444" 
+            stroke="#d1d5db" 
             strokeWidth={1}
-            strokeDasharray="2 2"
           />
           
-          {/* Commercial Launch marker (2018) */}
+          {/* 2004 Start marker */}
           <ReferenceLine 
-            x={2018} 
-            stroke="#10b981" 
-            strokeWidth={2}
-            strokeDasharray="3 3"
+            x={2004} 
+            stroke="#6b7280" 
+            strokeWidth={1}
+            strokeDasharray="2 2"
           />
           
           {/* Today marker (2025) */}
           <ReferenceLine 
             x={currentYear} 
             stroke="#374151" 
-            strokeWidth={2}
-            strokeDasharray="4 4"
-          />
-          
-          {/* Historical anchor markers */}
-          {WAYMO_PUBLIC_ANCHORS.map((anchor, index) => (
-            <ReferenceLine 
-              key={index}
-              x={anchor.year} 
-              stroke="#16a34a" 
-              strokeWidth={1}
-              strokeDasharray="1 1"
-            />
-          ))}
-          
-          {/* Last public datapoint marker (2026) */}
-          <ReferenceLine 
-            x={2026} 
-            stroke="#6b7280" 
             strokeWidth={1}
-            strokeDasharray="3 1"
+            strokeDasharray="3 3"
           />
           
-          {/* Break-even marker - only when cumulative net cash >= 0 */}
+          {/* Break-even marker (computed) */}
           {breakEvenPoint && (
             <ReferenceLine 
               x={breakEvenPoint.year} 
               stroke="#059669" 
-              strokeWidth={2}
+              strokeWidth={1}
               strokeDasharray="2 2"
             />
           )}
           
-          {/* Negative area fill */}
+          {/* Debt area (below zero only) */}
           <Area
             type="monotone"
             dataKey="cumulativeNetCash"
             stroke="none"
-            fill="url(#negativeGradient)"
+            fill="url(#debtArea)"
             fillOpacity={1}
             isAnimationActive={false}
           />
@@ -177,11 +158,18 @@ export function CapitalCurveChart({ data, onHover, onMouseLeave }: CapitalCurveC
             type="monotone" 
             dataKey="cumulativeNetCash" 
             stroke="#3b82f6" 
-            strokeWidth={3}
-            dot={false}
+            strokeWidth={2}
+            dot={(props: any) => {
+              const { cx, cy, payload } = props
+              const anchors = WAYMO_PUBLIC_ANCHORS.filter(anchor => anchor.year === payload.year)
+              if (anchors.length > 0) {
+                return <circle cx={cx} cy={cy} r={3} fill="#16a34a" stroke="#ffffff" strokeWidth={1} />
+              }
+              return null
+            }}
             activeDot={{ r: 4, fill: '#3b82f6' }}
           />
-        </AreaChart>
+        </LineChart>
       </ResponsiveContainer>
     </div>
   )

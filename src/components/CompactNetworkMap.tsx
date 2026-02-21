@@ -4,13 +4,14 @@ import { useState, useRef } from 'react'
 // @ts-ignore - react-simple-maps doesn't have proper React 19 types yet
 import { ComposableMap, Geographies, Geography, Marker, ZoomableGroup } from 'react-simple-maps'
 import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react'
-import { ROIInputs, ROIOutputs } from '@/lib/roi-calculator'
+import { SimInputs, SimOutputs, SimYearData } from '@/lib/sim-types'
 import { City, selectCities, categorizeCities } from '@/lib/cities'
 
 interface CompactNetworkMapProps {
-  inputs: ROIInputs
-  outputs: ROIOutputs
+  inputs: SimInputs
+  outputs: SimOutputs
   selectedPreset: string
+  yearData: SimYearData
 }
 
 interface TooltipData {
@@ -20,22 +21,23 @@ interface TooltipData {
   yearEntered: number
 }
 
-export function CompactNetworkMap({ inputs, outputs, selectedPreset }: CompactNetworkMapProps) {
+export function CompactNetworkMap({ inputs, outputs, selectedPreset, yearData }: CompactNetworkMapProps) {
   const [tooltip, setTooltip] = useState<TooltipData | null>(null)
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 })
   const [zoom, setZoom] = useState(1)
   const [center, setCenter] = useState<[number, number]>([0, 0])
   const mapRef = useRef<any>(null)
 
-  // Calculate cities
-  const year10Data = outputs.yearlyData[9] || outputs.yearlyData[outputs.yearlyData.length - 1]
-  const totalCities = Math.min(inputs.citiesPerYear * 10, 100) // Estimate based on 10 years
+  // Calculate cities based on current year data
+  const currentYear = yearData.year
+  const yearsActive = currentYear - inputs.startYear
+  const totalCities = Math.min(inputs.citiesPerYear * yearsActive, inputs.citiesPerYear * inputs.yearsToSimulate)
   const selectedCities = selectCities(totalCities, selectedPreset)
   const { production, validating } = categorizeCities(
     selectedCities,
     inputs.citiesPerYear,
     inputs.rampTimePerCity,
-    10
+    yearsActive
   )
 
   const handleMarkerHover = (city: City, status: 'production' | 'validating', event: any) => {
@@ -97,7 +99,7 @@ export function CompactNetworkMap({ inputs, outputs, selectedPreset }: CompactNe
       </div>
 
       {/* Map */}
-      <div className="h-64 overflow-hidden rounded">
+      <div className="h-[320px] w-full overflow-hidden rounded">
         <ComposableMap
           ref={mapRef}
           projection="geoNaturalEarth1"

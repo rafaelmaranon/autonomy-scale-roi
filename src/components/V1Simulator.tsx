@@ -7,6 +7,7 @@ import { SimCalculator } from '@/lib/sim-calculator'
 import { analytics } from '@/lib/analytics'
 import { CapitalCurveChart } from './CapitalCurveChart'
 import { HistoricalSourcesModal } from './HistoricalSourcesModal'
+import { CompactNetworkMap } from './CompactNetworkMap'
 
 export function V1Simulator() {
   const [inputs, setInputs] = useState<SimInputs>(profiles[0].inputs) // Start with Waymo
@@ -283,15 +284,12 @@ export function V1Simulator() {
                   <p className="text-xs text-gray-600 mb-3">
                     {activeYearData.citiesTotal} Cities · {SimCalculator.formatNumber(activeYearData.vehiclesProduction)} Production Vehicles
                   </p>
-                  <div className="h-72">
-                    <div className="w-full h-full bg-gray-50 rounded flex items-center justify-center text-gray-500 text-sm">
-                      Interactive World Map
-                      <br />
-                      <span className="text-xs text-gray-400 mt-2 block">
-                        {activeYearData.vehiclesValidation.toLocaleString()} validation vehicles
-                      </span>
-                    </div>
-                  </div>
+                  <CompactNetworkMap 
+                    inputs={inputs} 
+                    outputs={outputs} 
+                    selectedPreset={selectedProfile}
+                    yearData={activeYearData}
+                  />
                 </div>
               </div>
             </div>
