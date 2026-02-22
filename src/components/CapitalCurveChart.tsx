@@ -12,6 +12,12 @@ interface CapitalCurveChartProps {
 }
 
 export function CapitalCurveChart({ data, chartView = 'netCash', onHover, onMouseLeave }: CapitalCurveChartProps) {
+  // Debug: Log the actual data received by the chart
+  console.log('Chart received data:', data.length, 'points')
+  if (data.length > 0) {
+    console.log('Chart data range:', data[0].year, 'to', data[data.length - 1].year)
+    console.log('All years in chart data:', data.map(d => d.year))
+  }
   // Find break-even point (only for Net Cash view)
   const breakEvenPoint = chartView === 'netCash' ? data.find(d => d.cumulativeNetCash >= 0) : null
   const currentYear = 2026
@@ -90,6 +96,10 @@ export function CapitalCurveChart({ data, chartView = 'netCash', onHover, onMous
     return null
   }
 
+  // Force X-axis domain to full timeline
+  const firstYear = data[0]?.year
+  const lastYear = data[data.length - 1]?.year
+
   return (
     <div className="h-full">
       <ResponsiveContainer width="100%" height="100%">
@@ -110,6 +120,8 @@ export function CapitalCurveChart({ data, chartView = 'netCash', onHover, onMous
           <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" strokeWidth={0.5} />
           <XAxis 
             dataKey="year" 
+            type="number"
+            domain={[firstYear, lastYear]}
             axisLine={false}
             tickLine={false}
             tick={{ fontSize: 11, fill: '#9ca3af' }}

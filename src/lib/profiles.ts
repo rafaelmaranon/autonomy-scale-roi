@@ -75,7 +75,7 @@ export const customProfile: ProfileConfig = {
   }
 }
 
-export const profiles: ProfileConfig[] = [waymoProfile, teslaProfile, customProfile]
+export const profiles: ProfileConfig[] = [waymoProfile, customProfile]
 
 export function getProfileByName(name: string): ProfileConfig | undefined {
   return profiles.find(profile => profile.name === name)
