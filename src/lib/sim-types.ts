@@ -58,7 +58,7 @@ export const waymoProfile: ProfileConfig = {
   description: 'Deep R&D → Infrastructure',
   inputs: {
     startYear: 2004,
-    yearsToSimulate: 46, // 2004-2050
+    yearsToSimulate: 37, // 2004-2040
     citiesPerYear: 4, // Slower expansion for realistic curve
     vehiclesPerCity: 1500, // Conservative fleet size
     profitPerMile: 0.50, // Lower margin initially
@@ -80,7 +80,7 @@ export const teslaProfile: ProfileConfig = {
   description: 'Software Leverage',
   inputs: {
     startYear: 2025,
-    yearsToSimulate: 25, // 2025-2050
+    yearsToSimulate: 16, // 2025-2040
     citiesPerYear: 20,
     vehiclesPerCity: 5000, // Higher density through enablement
     profitPerMile: 1.20, // Higher margins through software leverage
@@ -118,7 +118,7 @@ export const customProfile: ProfileConfig = {
   }
 }
 
-export const profiles: ProfileConfig[] = [waymoProfile, teslaProfile, customProfile]
+export const profiles: ProfileConfig[] = [waymoProfile, customProfile]
 
 export function getProfileByName(name: string): ProfileConfig | undefined {
   return profiles.find(profile => profile.name === name)

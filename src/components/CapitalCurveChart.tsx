@@ -1,23 +1,50 @@
 'use client'
 
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Area, AreaChart } from 'recharts'
+import { useRef, useCallback } from 'react'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
 import { SimYearData } from '@/lib/sim-types'
-import { WAYMO_PUBLIC_ANCHORS, getDataPeriod } from '@/lib/historical-anchors'
+import { WAYMO_PUBLIC_ANCHORS } from '@/lib/historical-anchors'
+
+// Chart left/right margins must match the margin prop on LineChart
+const CHART_MARGIN_LEFT = 64 // left margin (8) + YAxis width (~56)
+const CHART_MARGIN_RIGHT = 16
 
 interface CapitalCurveChartProps {
   data: SimYearData[]
-  chartView?: string // View mode: netCash, paidTrips, fleetSize, productionMiles, validationMiles
+  chartView?: string
+  activeIndex?: number
   onHover?: (index: number) => void
   onMouseLeave?: () => void
 }
 
-export function CapitalCurveChart({ data, chartView = 'netCash', onHover, onMouseLeave }: CapitalCurveChartProps) {
-  // Debug: Log the actual data received by the chart
-  console.log('Chart received data:', data.length, 'points')
-  if (data.length > 0) {
-    console.log('Chart data range:', data[0].year, 'to', data[data.length - 1].year)
-    console.log('All years in chart data:', data.map(d => d.year))
-  }
+export function CapitalCurveChart({ data, chartView = 'netCash', activeIndex, onHover, onMouseLeave }: CapitalCurveChartProps) {
+  const chartRef = useRef<HTMLDivElement>(null)
+
+  // Map a clientX position to a data index
+  const clientXToIndex = useCallback((clientX: number): number => {
+    if (!chartRef.current || data.length === 0) return 0
+    const rect = chartRef.current.getBoundingClientRect()
+    const plotLeft = rect.left + CHART_MARGIN_LEFT
+    const plotRight = rect.right - CHART_MARGIN_RIGHT
+    const plotWidth = plotRight - plotLeft
+    const normalized = Math.max(0, Math.min(1, (clientX - plotLeft) / plotWidth))
+    return Math.round(normalized * (data.length - 1))
+  }, [data.length])
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (onHover) onHover(clientXToIndex(e.clientX))
+  }, [onHover, clientXToIndex])
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (onHover && e.touches.length > 0) {
+      e.preventDefault()
+      onHover(clientXToIndex(e.touches[0].clientX))
+    }
+  }, [onHover, clientXToIndex])
+
+  const handleLeave = useCallback(() => {
+    if (onMouseLeave) onMouseLeave()
+  }, [onMouseLeave])
   // Find break-even point (only for Net Cash view)
   const breakEvenPoint = chartView === 'netCash' ? data.find(d => d.cumulativeNetCash >= 0) : null
   const currentYear = 2026
@@ -65,72 +92,50 @@ export function CapitalCurveChart({ data, chartView = 'netCash', onHover, onMous
   
   const chartConfig = getChartConfig()
 
-  // Clean tooltip with key metrics
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      const yearData = payload[0].payload
-      
-      // Check if this year has historical anchors
-      const anchors = WAYMO_PUBLIC_ANCHORS.filter(anchor => anchor.year === label)
-      const isAnchored = anchors.length > 0
-      
-      return (
-        <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
-          <div className="text-sm font-semibold text-gray-900 mb-2">
-            {label} {isAnchored && chartView === 'netCash' && <span className="text-green-600 font-medium">(Anchored)</span>}
-          </div>
-          <div className="space-y-1 text-xs text-gray-700">
-            <div><strong>Current Value:</strong> {chartConfig.formatValue(yearData[chartConfig.dataKey])}</div>
-            {chartView === 'netCash' && (
-              <>
-                <div><strong>Paid trips/week:</strong> {(yearData.paidTripsPerWeek / 1000).toFixed(0)}K</div>
-                <div><strong>Total trips:</strong> {(yearData.productionTrips / 1e6).toFixed(1)}M</div>
-                <div><strong>Production miles:</strong> {(yearData.productionMiles / 1e9).toFixed(1)}B</div>
-                <div><strong>Validation miles:</strong> {(yearData.validationMiles / 1e9).toFixed(1)}B</div>
-              </>
-            )}
-          </div>
-        </div>
-      )
-    }
-    return null
-  }
+  // Active data point (driven by parent via activeIndex)
+  const activeData = activeIndex != null ? data[activeIndex] : null
 
-  // Force X-axis domain to full timeline
   const firstYear = data[0]?.year
   const lastYear = data[data.length - 1]?.year
 
   return (
-    <div className="h-full">
+    <div
+      ref={chartRef}
+      className="h-full relative select-none touch-none"
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleLeave}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleLeave}
+    >
+      {/* Value strip — shows active year + value */}
+      {activeData && (
+        <div className="absolute top-0 left-16 right-4 flex items-center gap-2 text-xs z-10 pointer-events-none">
+          <span className="font-medium text-gray-900">{activeData.year}</span>
+          <span className="text-gray-400">|</span>
+          <span className="font-bold text-gray-900">{chartConfig.formatValue((activeData as any)[chartConfig.dataKey])}</span>
+        </div>
+      )}
       <ResponsiveContainer width="100%" height="100%">
         <LineChart
           data={data}
-          margin={{ top: 10, right: 10, left: 50, bottom: 20 }}
-          onMouseMove={(state: any) => {
-            if (state?.activeTooltipIndex != null && onHover) {
-              onHover(state.activeTooltipIndex)
-            }
-          }}
-          onMouseLeave={() => {
-            if (onMouseLeave) {
-              onMouseLeave()
-            }
-          }}
+          margin={{ top: 20, right: 16, left: 8, bottom: 4 }}
         >
-          <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" strokeWidth={0.5} />
+          <CartesianGrid vertical={false} stroke="#f3f4f6" strokeWidth={0.5} />
           <XAxis 
             dataKey="year" 
             type="number"
             domain={[firstYear, lastYear]}
             axisLine={false}
             tickLine={false}
-            tick={{ fontSize: 11, fill: '#9ca3af' }}
+            tick={{ fontSize: 12, fill: '#6b7280' }}
             tickFormatter={(value) => value.toString()}
+            interval={'preserveStartEnd'}
           />
           <YAxis 
             axisLine={false}
             tickLine={false}
-            tick={{ fontSize: 11, fill: '#9ca3af' }}
+            tick={{ fontSize: 12, fill: '#6b7280' }}
+            width={56}
             domain={chartConfig.yAxisDomain as any}
             tickFormatter={(value) => {
               if (chartView === 'netCash') {
@@ -144,7 +149,7 @@ export function CapitalCurveChart({ data, chartView = 'netCash', onHover, onMous
               }
             }}
           />
-          <Tooltip content={<CustomTooltip />} />
+          <Tooltip content={() => null} cursor={false} isAnimationActive={false} />
           
           {/* Reference lines - only for Net Cash view */}
           {chartView === 'netCash' && (
@@ -160,6 +165,11 @@ export function CapitalCurveChart({ data, chartView = 'netCash', onHover, onMous
             </>
           )}
           
+          {/* Active year vertical indicator */}
+          {activeData && (
+            <ReferenceLine x={activeData.year} stroke="#9ca3af" strokeWidth={1} strokeDasharray="3 3" />
+          )}
+
           {/* Main line */}
           <Line 
             type="monotone" 
@@ -167,7 +177,7 @@ export function CapitalCurveChart({ data, chartView = 'netCash', onHover, onMous
             stroke={chartConfig.color}
             strokeWidth={2.5}
             dot={false}
-            activeDot={{ r: 4, fill: chartConfig.color }}
+            activeDot={false}
           />
           
           {/* Historical anchor dots - only for Net Cash view */}

@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react'
 // @ts-ignore - react-simple-maps doesn't have proper React 19 types yet
 import { ComposableMap, Geographies, Geography, Marker, ZoomableGroup } from 'react-simple-maps'
-import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react'
+// lucide-react icons removed - zoom controls no longer used
 import { SimInputs, SimOutputs, SimYearData } from '@/lib/sim-types'
 import { City, selectCities, categorizeCities } from '@/lib/cities'
 
@@ -12,6 +12,8 @@ interface CompactNetworkMapProps {
   outputs: SimOutputs
   selectedPreset: string
   yearData: SimYearData
+  onHover?: (yearIndex: number) => void
+  onMouseLeave?: () => void
 }
 
 interface TooltipData {
@@ -21,7 +23,7 @@ interface TooltipData {
   yearEntered: number
 }
 
-export function CompactNetworkMap({ inputs, outputs, selectedPreset, yearData }: CompactNetworkMapProps) {
+export function CompactNetworkMap({ inputs, outputs, selectedPreset, yearData, onHover, onMouseLeave }: CompactNetworkMapProps) {
   const [tooltip, setTooltip] = useState<TooltipData | null>(null)
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 })
   const [zoom, setZoom] = useState(1)
@@ -72,34 +74,25 @@ export function CompactNetworkMap({ inputs, outputs, selectedPreset, yearData }:
   }
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-3 relative">
-      {/* Zoom Controls */}
-      <div className="absolute top-5 right-5 z-10 flex flex-col space-y-1">
-        <button
-          onClick={handleZoomIn}
-          className="w-6 h-6 bg-white border border-gray-300 rounded flex items-center justify-center hover:bg-gray-50 transition-colors"
-          title="Zoom In"
-        >
-          <ZoomIn size={12} className="text-gray-600" />
-        </button>
-        <button
-          onClick={handleZoomOut}
-          className="w-6 h-6 bg-white border border-gray-300 rounded flex items-center justify-center hover:bg-gray-50 transition-colors"
-          title="Zoom Out"
-        >
-          <ZoomOut size={12} className="text-gray-600" />
-        </button>
-        <button
-          onClick={handleReset}
-          className="w-6 h-6 bg-white border border-gray-300 rounded flex items-center justify-center hover:bg-gray-50 transition-colors"
-          title="Reset View"
-        >
-          <RotateCcw size={12} className="text-gray-600" />
-        </button>
-      </div>
-
+    <div className="relative w-full h-full">
       {/* Map */}
-      <div className="h-[320px] w-full overflow-hidden rounded">
+      <div 
+        className="w-full h-full overflow-hidden"
+        onMouseMove={(e) => {
+          if (onHover && outputs.yearlyData.length > 0) {
+            const rect = e.currentTarget.getBoundingClientRect()
+            const x = e.clientX - rect.left
+            const progress = Math.max(0, Math.min(1, x / rect.width))
+            const yearIndex = Math.floor(progress * (outputs.yearlyData.length - 1))
+            onHover(yearIndex)
+          }
+        }}
+        onMouseLeave={() => {
+          if (onMouseLeave) {
+            onMouseLeave()
+          }
+        }}
+      >
         <ComposableMap
           ref={mapRef}
           projection="geoNaturalEarth1"
