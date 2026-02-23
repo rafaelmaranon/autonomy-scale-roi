@@ -75,6 +75,11 @@ export function CompactNetworkMap({ inputs, outputs, selectedPreset, yearData, o
 
   return (
     <div className="relative w-full h-full">
+      {/* Zoom Controls */}
+      <div className="absolute top-2 right-2 z-10 flex flex-col gap-1">
+        <button onClick={handleZoomIn} className="w-7 h-7 bg-white border border-gray-300 rounded text-gray-600 hover:bg-gray-50 text-sm font-bold shadow-sm">+</button>
+        <button onClick={handleZoomOut} className="w-7 h-7 bg-white border border-gray-300 rounded text-gray-600 hover:bg-gray-50 text-sm font-bold shadow-sm">−</button>
+      </div>
       {/* Map */}
       <div 
         className="w-full h-full overflow-hidden"
@@ -97,15 +102,15 @@ export function CompactNetworkMap({ inputs, outputs, selectedPreset, yearData, o
           ref={mapRef}
           projection="geoNaturalEarth1"
           projectionConfig={{
-            scale: 140 * zoom,
-            center: center
+            scale: 140,
+            center: [0, 0] as [number, number]
           }}
           style={{
             width: '100%',
             height: '100%'
           }}
         >
-          <ZoomableGroup zoom={zoom} center={center}>
+          <ZoomableGroup zoom={zoom} center={center} onMoveEnd={({ coordinates, zoom: z }: any) => { setCenter(coordinates); setZoom(z); }}>
             <Geographies geography="/maps/world-110m.json">
               {({ geographies }: any) =>
                 geographies.map((geo: any) => (

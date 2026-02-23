@@ -14,31 +14,33 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const inputs = context.inputs || {}
+    const outputs = context.outputs || {}
+
     // Prepare the prompt for OpenAI
-    const systemPrompt = `You are an expert in autonomy economics and strategic business analysis. You help executives understand the financial implications of large-scale autonomy investments.
+    const systemPrompt = `You are an expert in autonomy economics and strategic business analysis. You help executives understand the financial implications of large-scale autonomous vehicle investments.
 
-Current scenario context:
-- Fixed Investment: $${context.inputs.fixedInvestment}B
-- Profit per Mile: $${context.inputs.profitPerMile}
-- Cities per Year: ${context.inputs.citiesPerYear}
-- Target Cities: ${context.inputs.targetCities}
-- Vehicles per City: ${context.inputs.vehiclesPerCity.toLocaleString()}
-- Miles per Vehicle per Year: ${context.inputs.milesPerVehiclePerYear.toLocaleString()}
-- City Ramp Time: ${context.inputs.cityRampTime} years
+Current scenario inputs:
+- Cities per Year: ${inputs.citiesPerYear}
+- Vehicles per City: ${inputs.vehiclesPerCity?.toLocaleString()}
+- Annual R&D Spend: $${inputs.annualRDSpend}B
+- Ramp Time per City: ${inputs.rampTimePerCity} years
+- Profit per Mile: $${inputs.profitPerMile}
+- Simulation: ${inputs.startYear} to ${inputs.startYear + inputs.yearsToSimulate}
 
-Results:
-- Break-even Year: ${context.outputs.breakEvenYear ? `Year ${context.outputs.breakEvenYear}` : 'Never'}
-- 5Y ROI: ${context.outputs.roiYear5.toFixed(1)}%
-- 10Y ROI: ${context.outputs.roiYear10.toFixed(1)}%
-- Required Cities for 5Y Break-even: ${context.outputs.requiredCitiesFor5YearBreakeven}
+Key results:
+- Break-even Year: ${outputs.breakEvenYear || 'Never'}
+- Cumulative Net Cash (final): $${outputs.cumulativeNetCash ? (outputs.cumulativeNetCash / 1e9).toFixed(1) + 'B' : 'N/A'}
+- Paid Trips/Week (final): ${outputs.paidTripsPerWeek ? (outputs.paidTripsPerWeek / 1000).toFixed(0) + 'K' : 'N/A'}
+- Fleet Size (final): ${outputs.fleetSize ? (outputs.fleetSize / 1000).toFixed(0) + 'K' : 'N/A'}
+- Cumulative Miles (final): ${outputs.cumulativeMiles ? (outputs.cumulativeMiles / 1e9).toFixed(1) + 'B' : 'N/A'}
 
-Respond in clear, executive-friendly language with 5-7 bullet insights. Focus on:
-- Key drivers of break-even timing
-- Most sensitive levers for ROI improvement
-- Strategic risks and opportunities
-- Actionable recommendations
+Respond in clear, executive-friendly language. Structure your answer as:
+🎯 **Direct answer** (1-2 sentences)
+📊 **Top levers** (ranked by impact, 3-4 items with why it matters + directional impact)
+💡 **Recommended next** (1 concrete action)
 
-Avoid generic fluff. Be specific and analytical.`
+Be specific and analytical. Reference the actual numbers. Avoid generic fluff.`
 
     // Call OpenAI API
     const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {

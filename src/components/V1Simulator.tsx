@@ -7,6 +7,7 @@ import { SimCalculator } from '@/lib/sim-calculator'
 import { analytics } from '@/lib/analytics'
 import { CapitalCurveChart } from './CapitalCurveChart'
 import { CompactNetworkMap } from './CompactNetworkMap'
+import { InsightsPanel } from './InsightsPanel'
 
 export function V1Simulator() {
   const [inputs, setInputs] = useState<SimInputs>(profiles[0].inputs) // Start with Waymo
@@ -80,7 +81,7 @@ export function V1Simulator() {
   const activeYear = activeYearData?.year || inputs.startYear + inputs.yearsToSimulate - 1
 
   return (
-    <div className="min-h-screen md:h-screen md:overflow-hidden bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-white flex flex-col">
       {/* Header */}
       <header className="bg-white border-b border-gray-200 flex-shrink-0">
         <div className="px-4 md:px-6">
@@ -155,7 +156,7 @@ export function V1Simulator() {
             {/* Desktop Layout (>=md): 2-Column */}
             <div className="hidden md:flex flex-1 min-h-0">
               {/* Left Rail - Core Inputs Only */}
-              <div className="w-72 flex-shrink-0 border-r border-gray-200 bg-white px-4 py-3 overflow-y-auto">
+              <div className="w-80 flex-shrink-0 border-r border-gray-200 bg-white px-5 py-3 overflow-y-auto">
                 <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Inputs</h3>
                 <div className="space-y-5">
                   <div>
@@ -197,10 +198,11 @@ export function V1Simulator() {
                 </div>
               </div>
 
-              {/* Right Content - Map (top) + Chart (bottom) fill viewport */}
-              <div className="flex-1 flex flex-col min-h-0 px-4 py-2 gap-2">
-                {/* Map — 40% of available height */}
-                <div className="flex-[4] min-h-0">
+              {/* Right Content - Map + Chart + Insights (scrollable) */}
+              <div className="flex-1 px-8 py-4 overflow-y-auto">
+               <div className="max-w-3xl">
+                {/* Map */}
+                <div className="h-[28vh] min-h-[180px]">
                   <CompactNetworkMap 
                     inputs={inputs}
                     outputs={outputs}
@@ -209,8 +211,8 @@ export function V1Simulator() {
                   />
                 </div>
 
-                {/* Chart — 60% of available height */}
-                <div className="flex-[6] min-h-0 flex flex-col">
+                {/* Chart */}
+                <div className="h-[35vh] min-h-[240px] flex flex-col mt-2">
                   <div className="flex justify-between items-center mb-1">
                     <select
                       value={chartView}
@@ -233,6 +235,10 @@ export function V1Simulator() {
                     />
                   </div>
                 </div>
+
+                {/* Insights */}
+                <InsightsPanel inputs={inputs} outputs={outputs} activeYearData={activeYearData} />
+               </div>
               </div>
             </div>
 
@@ -264,7 +270,7 @@ export function V1Simulator() {
 
               {/* Single View */}
               {activeView === 'map' ? (
-                <div className="h-[360px]">
+                <div className="h-[240px]">
                   <CompactNetworkMap 
                     inputs={inputs}
                     outputs={outputs}
@@ -297,6 +303,9 @@ export function V1Simulator() {
                   </div>
                 </div>
               )}
+
+              {/* Insights — below active view */}
+              <InsightsPanel inputs={inputs} outputs={outputs} activeYearData={activeYearData} />
             </div>
 
             {/* Mobile Inputs Drawer */}
