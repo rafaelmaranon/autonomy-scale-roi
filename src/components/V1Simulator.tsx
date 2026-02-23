@@ -80,7 +80,7 @@ export function V1Simulator() {
   const activeYear = activeYearData?.year || inputs.startYear + inputs.yearsToSimulate - 1
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen md:h-screen md:overflow-hidden bg-gray-50 flex flex-col">
       {/* Header */}
       <header className="bg-white border-b border-gray-200 flex-shrink-0">
         <div className="px-4 md:px-6">
@@ -197,10 +197,10 @@ export function V1Simulator() {
                 </div>
               </div>
 
-              {/* Right Content - Map (top) + Chart (bottom) stacked */}
-              <div className="flex-1 flex flex-col min-h-0 px-4 py-2 overflow-y-auto space-y-2">
-                {/* Map */}
-                <div className="h-[400px] flex-shrink-0">
+              {/* Right Content - Map (top) + Chart (bottom) fill viewport */}
+              <div className="flex-1 flex flex-col min-h-0 px-4 py-2 gap-2">
+                {/* Map — 40% of available height */}
+                <div className="flex-[4] min-h-0">
                   <CompactNetworkMap 
                     inputs={inputs}
                     outputs={outputs}
@@ -209,8 +209,8 @@ export function V1Simulator() {
                   />
                 </div>
 
-                {/* Chart */}
-                <div className="h-[480px] flex-shrink-0 flex flex-col">
+                {/* Chart — 60% of available height */}
+                <div className="flex-[6] min-h-0 flex flex-col">
                   <div className="flex justify-between items-center mb-1">
                     <select
                       value={chartView}
@@ -355,9 +355,9 @@ export function V1Simulator() {
         )}
       </main>
 
-      {/* Version stamp — visible on hover or ?debug=1 */}
-      <div className={`fixed bottom-1 right-2 text-[10px] text-gray-300 transition-opacity ${typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('debug') === '1' ? 'opacity-100' : 'opacity-0 hover:opacity-100'}`}>
-        {process.env.NEXT_PUBLIC_APP_VERSION || 'dev'}
+      {/* Version stamp — always visible */}
+      <div className="fixed bottom-1 right-2 text-[10px] text-gray-400">
+        v0.4.1 — Scrub &amp; Source
       </div>
     </div>
   )

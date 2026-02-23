@@ -19,6 +19,7 @@ interface CapitalCurveChartProps {
 
 export function CapitalCurveChart({ data, chartView = 'netCash', activeIndex, onHover, onMouseLeave }: CapitalCurveChartProps) {
   const chartRef = useRef<HTMLDivElement>(null)
+  const isOverStrip = useRef(false)
 
   // Map a clientX position to a data index
   const clientXToIndex = useCallback((clientX: number): number => {
@@ -32,7 +33,7 @@ export function CapitalCurveChart({ data, chartView = 'netCash', activeIndex, on
   }, [data.length])
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (onHover) onHover(clientXToIndex(e.clientX))
+    if (onHover && !isOverStrip.current) onHover(clientXToIndex(e.clientX))
   }, [onHover, clientXToIndex])
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
@@ -42,7 +43,8 @@ export function CapitalCurveChart({ data, chartView = 'netCash', activeIndex, on
     }
   }, [onHover, clientXToIndex])
 
-  const handleLeave = useCallback(() => {
+  // Mouse leave → reset to final year. Touch end → sticky (do nothing).
+  const handleMouseLeave = useCallback(() => {
     if (onMouseLeave) onMouseLeave()
   }, [onMouseLeave])
   // Find break-even point (only for Net Cash view)
@@ -101,20 +103,42 @@ export function CapitalCurveChart({ data, chartView = 'netCash', activeIndex, on
   return (
     <div
       ref={chartRef}
-      className="h-full relative select-none touch-none"
+      className="h-full relative select-none"
       onMouseMove={handleMouseMove}
-      onMouseLeave={handleLeave}
+      onMouseLeave={handleMouseLeave}
       onTouchMove={handleTouchMove}
-      onTouchEnd={handleLeave}
     >
-      {/* Value strip — shows active year + value */}
-      {activeData && (
-        <div className="absolute top-0 left-16 right-4 flex items-center gap-2 text-xs z-10 pointer-events-none">
-          <span className="font-medium text-gray-900">{activeData.year}</span>
-          <span className="text-gray-400">|</span>
-          <span className="font-bold text-gray-900">{chartConfig.formatValue((activeData as any)[chartConfig.dataKey])}</span>
-        </div>
-      )}
+      {/* Value strip — shows active year + value + sourced anchor if available */}
+      {activeData && (() => {
+        const anchor = WAYMO_PUBLIC_ANCHORS.find(a => a.year === activeData.year)
+        const formatAnchorValue = (v: number) => v >= 1e6 ? `${(v / 1e6).toFixed(1)}M` : v >= 1e3 ? `${(v / 1e3).toFixed(0)}K` : v.toString()
+        return (
+          <div
+            className="absolute top-0 left-16 right-4 flex items-center gap-2 text-xs z-10 py-1"
+            onMouseEnter={() => { isOverStrip.current = true }}
+            onMouseLeave={() => { isOverStrip.current = false }}
+          >
+            <span className="font-medium text-gray-900 pointer-events-none">{activeData.year}</span>
+            <span className="text-gray-400 pointer-events-none">|</span>
+            <span className="font-bold text-gray-900 pointer-events-none">{chartConfig.formatValue((activeData as any)[chartConfig.dataKey])}</span>
+            {anchor && (
+              <>
+                <span className="text-gray-300 pointer-events-none">·</span>
+                <span className="text-emerald-600 pointer-events-none">Sourced: {formatAnchorValue(anchor.value)} {anchor.unit}</span>
+                <a
+                  href={anchor.source.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-emerald-600 hover:text-emerald-800 underline"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {anchor.source.publisher} ↗
+                </a>
+              </>
+            )}
+          </div>
+        )
+      })()}
       <ResponsiveContainer width="100%" height="100%">
         <LineChart
           data={data}
