@@ -3,7 +3,21 @@
 import { useState, useRef, useEffect } from 'react'
 import { Send, Loader2, MapPin, Check, X, FileText, Plus } from 'lucide-react'
 import { SimInputs, SimOutputs, SimYearData } from '@/lib/sim-types'
-import type { InsightsAction, Candidate } from '@/lib/insights-schema'
+import type { Candidate } from '@/lib/insights-schema'
+
+type ActionType = 'answer' | 'city_request' | 'url_extract'
+interface InsightsActionPayload {
+  type: ActionType
+  answer_markdown?: string
+  key_levers?: any[]
+  suggested_next_inputs?: any[]
+  city_query?: string
+  needs_clarification?: boolean
+  clarification_question?: string
+  url?: string
+  candidates?: Candidate[]
+  [key: string]: any
+}
 
 interface InsightsPanelProps {
   inputs: SimInputs
@@ -16,7 +30,7 @@ interface InsightsPanelProps {
 interface ChatMessage {
   role: 'user' | 'assistant'
   text: string
-  action?: InsightsAction
+  action?: InsightsActionPayload
   cityPreview?: { place_name: string; lat: number; lon: number; mapbox_id: string; country: string; region: string; already_requested?: boolean }
   candidates?: Candidate[]
 }
@@ -81,12 +95,12 @@ export function InsightsPanel({ inputs, outputs, activeYearData, onCityRequested
       })
       const data = await res.json()
 
-      if (!res.ok || !data.action) {
+      if (!data.ok) {
         addMessage({ role: 'assistant', text: data.error || 'Something went wrong. Please try again.' })
         return
       }
 
-      const action = data.action as InsightsAction
+      const action = data.action as InsightsActionPayload
       await handleAction(action)
 
     } catch {
@@ -99,12 +113,12 @@ export function InsightsPanel({ inputs, outputs, activeYearData, onCityRequested
   // -----------------------------------------------------------------------
   // Action router
   // -----------------------------------------------------------------------
-  const handleAction = async (action: InsightsAction) => {
-    switch (action.action) {
+  const handleAction = async (action: InsightsActionPayload) => {
+    switch (action.type) {
       case 'answer':
         addMessage({
           role: 'assistant',
-          text: action.answer_markdown,
+          text: action.answer_markdown || 'No response.',
           action,
         })
         break
@@ -116,13 +130,16 @@ export function InsightsPanel({ inputs, outputs, activeYearData, onCityRequested
       case 'url_extract':
         handleUrlExtractAction(action)
         break
+
+      default:
+        addMessage({ role: 'assistant', text: `Unknown action type: ${action.type}` })
     }
   }
 
   // -----------------------------------------------------------------------
   // City request flow: clarify → preview → confirm
   // -----------------------------------------------------------------------
-  const handleCityRequestAction = async (action: InsightsAction & { action: 'city_request' }) => {
+  const handleCityRequestAction = async (action: InsightsActionPayload) => {
     if (action.needs_clarification) {
       addMessage({
         role: 'assistant',
@@ -222,7 +239,7 @@ export function InsightsPanel({ inputs, outputs, activeYearData, onCityRequested
   // -----------------------------------------------------------------------
   // URL extract flow: show candidates → add
   // -----------------------------------------------------------------------
-  const handleUrlExtractAction = (action: InsightsAction & { action: 'url_extract' }) => {
+  const handleUrlExtractAction = (action: InsightsActionPayload) => {
     if (!action.candidates || action.candidates.length === 0) {
       addMessage({ role: 'assistant', text: `I checked ${action.url} but couldn't find any numeric datapoints to extract. Try pasting the relevant paragraph directly.` })
       return

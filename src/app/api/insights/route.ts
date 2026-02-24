@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     const { message, context } = await request.json()
 
     if (!message || typeof message !== 'string') {
-      return NextResponse.json({ error: 'message is required' }, { status: 400 })
+      return NextResponse.json({ ok: false, error: 'message is required' }, { status: 400 })
     }
 
     const inputs = context?.inputs || {}
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
       let detail = `OpenAI ${openaiRes.status}`
       try { detail = JSON.parse(errBody)?.error?.message || detail } catch {}
       await logAnalytics('insights_message', { action: 'error', latency, error: detail })
-      return NextResponse.json({ error: detail }, { status: 502 })
+      return NextResponse.json({ ok: false, error: detail }, { status: 502 })
     }
 
     const aiData = await openaiRes.json()
@@ -87,9 +87,7 @@ export async function POST(request: NextRequest) {
 
     if (!fnCall?.arguments) {
       await logAnalytics('insights_message', { action: 'no_function_call', latency })
-      return NextResponse.json({
-        action: { action: 'answer', answer_markdown: 'I couldn\'t process that. Please try rephrasing your question.' },
-      })
+      return NextResponse.json({ ok: false, error: 'No tool call returned from AI' })
     }
 
     // Parse and validate with Zod
@@ -100,9 +98,7 @@ export async function POST(request: NextRequest) {
     } catch (parseErr) {
       console.error('[insights] Schema validation failed:', parseErr)
       await logAnalytics('insights_message', { action: 'parse_error', latency })
-      return NextResponse.json({
-        action: { action: 'answer', answer_markdown: 'I couldn\'t parse that response. Please try again.' },
-      })
+      return NextResponse.json({ ok: false, error: 'AI returned invalid response schema' })
     }
 
     // Log to analytics
@@ -125,11 +121,13 @@ export async function POST(request: NextRequest) {
       })
     } catch {}
 
-    return NextResponse.json({ action: parsed })
+    // Canonical response: rename action → type
+    const { action: actionType, ...rest } = parsed as any
+    return NextResponse.json({ ok: true, action: { type: actionType, ...rest } })
 
   } catch (err: any) {
     console.error('[insights] Server error:', err)
-    return NextResponse.json({ error: err?.message ?? String(err) }, { status: 500 })
+    return NextResponse.json({ ok: false, error: err?.message ?? String(err) }, { status: 500 })
   }
 }
 
