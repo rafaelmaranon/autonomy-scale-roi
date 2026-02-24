@@ -115,7 +115,6 @@ export function CompactNetworkMap({ inputs, outputs, selectedPreset, yearData, b
   // Resolve DB city anchors → coords
   const anchoredCities = useMemo(() => resolveAnchors(bindingCities, currentYear), [bindingCities, currentYear])
   const pilotCities = useMemo(() => resolveAnchors(annotatedCities, currentYear), [annotatedCities, currentYear])
-  const pendingResolved = useMemo(() => resolveAnchors(pendingCities, currentYear + 5), [pendingCities, currentYear]) // show pending for future years too
 
   // Resolve requested cities from metadata coords (not WORLD_CITIES)
   const requestedResolved = useMemo<ResolvedCity[]>(() => {
@@ -130,15 +129,14 @@ export function CompactNetworkMap({ inputs, outputs, selectedPreset, yearData, b
     return resolved
   }, [requestedCities])
 
-  // Build unified, deduped render list with priority: anchored > pilot > pending > requested > projected
+  // Build unified, deduped render list with priority: anchored > pilot > requested > projected
   const allDbNames = useMemo(() => {
     const names = new Set<string>()
     for (const c of anchoredCities) names.add(c.name.toLowerCase())
     for (const c of pilotCities) names.add(c.name.toLowerCase())
-    for (const c of pendingResolved) names.add(c.name.toLowerCase())
     for (const c of requestedResolved) names.add(c.name.toLowerCase())
     return names
-  }, [anchoredCities, pilotCities, pendingResolved, requestedResolved])
+  }, [anchoredCities, pilotCities, requestedResolved])
 
   const { projectedProduction, projectedValidating } = useMemo(() => {
     const yearsActive = currentYear - inputs.startYear
@@ -180,13 +178,12 @@ export function CompactNetworkMap({ inputs, outputs, selectedPreset, yearData, b
 
     for (const c of anchoredCities) tryAdd(c.name, c.lat, c.lon, 'anchored', c.anchor)
     for (const c of pilotCities) tryAdd(c.name, c.lat, c.lon, 'pilot', c.anchor)
-    for (const c of pendingResolved) tryAdd(c.name, c.lat, c.lon, 'pending', c.anchor)
     for (const c of requestedResolved) tryAdd(c.name, c.lat, c.lon, 'requested', c.anchor)
     for (const c of projectedProduction) tryAdd(c.name, c.lat, c.lon, 'production')
     for (const c of projectedValidating) tryAdd(c.name, c.lat, c.lon, 'validating')
 
     return [...seen.values()]
-  }, [anchoredCities, pilotCities, pendingResolved, requestedResolved, projectedProduction, projectedValidating])
+  }, [anchoredCities, pilotCities, requestedResolved, projectedProduction, projectedValidating])
 
   const handleMarkerHover = (name: string, status: CityStatus, source: HistoricalAnchorRow | undefined, event: any) => {
     if (tooltipPinned) return
@@ -255,9 +252,9 @@ export function CompactNetworkMap({ inputs, outputs, selectedPreset, yearData, b
           <div className="font-bold text-gray-700 mb-1">City Debug ({currentYear})</div>
           <div className="text-blue-600">Anchored: {anchoredCities.length} {anchoredCities.length > 0 && `(${anchoredCities.map(c => c.name).join(', ')})`}</div>
           <div className="text-purple-600">Pilot: {pilotCities.length} {pilotCities.length > 0 && `(${pilotCities.map(c => c.name).join(', ')})`}</div>
-          <div className="text-yellow-600">Pending: {pendingResolved.length} {pendingResolved.length > 0 && `(${pendingResolved.map(c => c.name).join(', ')})`}</div>
+          <div className="text-emerald-600">Requested: {requestedResolved.length} {requestedResolved.length > 0 && `(${requestedResolved.map(c => c.name).join(', ')})`}</div>
           <div className="text-gray-500">Projected: {projectedProduction.length + projectedValidating.length} (prod: {projectedProduction.length}, ramp: {projectedValidating.length})</div>
-          <div className="text-gray-400 mt-1">DB rows: bind={bindingCities.length} pend={pendingCities.length} ann={annotatedCities.length}</div>
+          <div className="text-gray-400 mt-1">DB rows: bind={bindingCities.length} ann={annotatedCities.length} req={requestedCities.length}</div>
         </div>
       )}
       {/* Map */}
@@ -323,11 +320,13 @@ export function CompactNetworkMap({ inputs, outputs, selectedPreset, yearData, b
                   if (c.status === 'pilot') return (
                     <circle r={4 * s} fill="none" stroke="#8b5cf6" strokeWidth={1.5 * s} className="cursor-pointer" />
                   )
-                  if (c.status === 'pending') return (
-                    <circle r={4 * s} fill="none" stroke="#f59e0b" strokeWidth={1.5 * s} strokeDasharray="2 2" className="cursor-pointer" />
-                  )
                   if (c.status === 'requested') return (
-                    <circle r={4 * s} fill="none" stroke="#10b981" strokeWidth={1.5 * s} className="cursor-pointer" />
+                    <g>
+                      {/* Invisible larger hit target for mobile tapping */}
+                      <circle r={12 * s} fill="transparent" className="cursor-pointer" />
+                      <circle r={4.5 * s} fill="#10b981" opacity={0.15} />
+                      <circle r={4 * s} fill="none" stroke="#10b981" strokeWidth={1.8 * s} className="cursor-pointer" />
+                    </g>
                   )
                   if (c.status === 'production') return (
                     <g>
@@ -363,14 +362,7 @@ export function CompactNetworkMap({ inputs, outputs, selectedPreset, yearData, b
           </div>
         </div>
         <div className="relative group flex items-center space-x-1 cursor-pointer">
-          <div className="w-2 h-2 rounded-full border border-yellow-500 border-dashed" />
-          <span>Pending ({pendingResolved.length})</span>
-          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-gray-800 text-white text-[10px] rounded shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-            Community submitted. Not reviewed yet.
-          </div>
-        </div>
-        <div className="relative group flex items-center space-x-1 cursor-pointer">
-          <div className="w-2 h-2 rounded-full border border-emerald-500" />
+          <div className="w-2 h-2 rounded-full border border-emerald-500" style={{ backgroundColor: 'rgba(16, 185, 129, 0.15)' }} />
           <span>Requested ({requestedResolved.length})</span>
           <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-gray-800 text-white text-[10px] rounded shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
             Community requested via Insights.
@@ -407,7 +399,7 @@ export function CompactNetworkMap({ inputs, outputs, selectedPreset, yearData, b
                 <div className="flex justify-between gap-4">
                   <span className="text-gray-600">Status:</span>
                   <span className="font-medium" style={{ color: STATUS_COLORS[tooltip.status] }}>
-                    {STATUS_LABELS[tooltip.status]}
+                    {STATUS_LABELS[tooltip.status]}{tooltip.status === 'requested' && ' (+1)'}
                   </span>
                 </div>
                 {tooltip.source && (
