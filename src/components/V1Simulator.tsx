@@ -34,6 +34,15 @@ export function V1Simulator() {
       .catch(() => {})
   }
 
+  // Fallback: if somehow selectedProfile is 'tesla', force to 'Waymo'
+  useEffect(() => {
+    if (selectedProfile === 'tesla') {
+      setSelectedProfile('Waymo')
+      const waymoProfile = profiles.find(p => p.name === 'Waymo')
+      if (waymoProfile) setInputs(waymoProfile.inputs)
+    }
+  }, [selectedProfile])
+
   // Fetch historical anchors from API
   useEffect(() => { fetchAnchors() }, [])
 
@@ -61,6 +70,10 @@ export function V1Simulator() {
 
   // Handle profile changes
   const handleProfileChange = (profileName: string) => {
+    // Fallback: if tesla is somehow selected, use waymo
+    if (profileName === 'tesla') {
+      profileName = 'Waymo'
+    }
     const profile = getProfileByName(profileName)
     if (profile) {
       setSelectedProfile(profileName)
@@ -141,6 +154,7 @@ export function V1Simulator() {
                 className="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-1.5 pr-7 text-xs font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="Waymo">Waymo</option>
+                <option value="tesla" disabled>Tesla (soon)</option>
                 <option value="Custom">Custom</option>
               </select>
               <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400 pointer-events-none" />

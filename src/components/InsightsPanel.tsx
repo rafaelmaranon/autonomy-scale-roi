@@ -307,7 +307,7 @@ export function InsightsPanel({ inputs, outputs, activeYearData, onCityRequested
 
   return (
     <div className="pt-4 pb-8">
-      <h3 className="text-sm font-semibold text-gray-900 mb-3">Insights</h3>
+      <h3 className="text-sm font-semibold text-gray-900 mb-3">Insight & Community</h3>
 
       {/* Chips */}
       <div className="flex flex-wrap gap-2 mb-3">
@@ -406,7 +406,7 @@ export function InsightsPanel({ inputs, outputs, activeYearData, onCityRequested
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask about this scenario, request a city, or paste a URL..."
+          placeholder="Ask a question, request a city, or paste a news URL to propose datapoints…"
           className="flex-1 px-3 py-2 text-sm text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           disabled={isLoading}
         />
@@ -419,6 +419,11 @@ export function InsightsPanel({ inputs, outputs, activeYearData, onCityRequested
           <span className="hidden sm:inline">{isLoading ? 'Thinking...' : 'Send'}</span>
         </button>
       </form>
+
+      {/* Helper hint */}
+      <p className="mt-2 text-xs text-gray-400 leading-relaxed">
+        Tip: Paste a link to a blog or news article and we'll extract candidate datapoints (added as Pending).
+      </p>
     </div>
   )
 }
