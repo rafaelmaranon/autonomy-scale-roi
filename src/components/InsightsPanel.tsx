@@ -8,24 +8,73 @@ interface InsightsPanelProps {
   inputs: SimInputs
   outputs: SimOutputs
   activeYearData: SimYearData
+  onCityRequested?: () => void
 }
 
 const INSIGHT_CHIPS = [
   "What drives break-even most?",
   "Which input has the biggest leverage?",
-  "How can I accelerate payback?",
+  "I want Waymo in my city",
 ]
 
-export function InsightsPanel({ inputs, outputs, activeYearData }: InsightsPanelProps) {
+const CITY_REQUEST_PATTERNS = [
+  /i want (?:waymo|autonomy|self[- ]driving) in (.+)/i,
+  /(?:add|request|deploy|launch|bring)(?: (?:waymo|it))? (?:in|to) (.+)/i,
+  /my (?:city|town|area) is (.+)/i,
+  /(?:waymo|expand) to (.+)/i,
+]
+
+function extractCityRequest(text: string): string | null {
+  for (const pattern of CITY_REQUEST_PATTERNS) {
+    const match = text.match(pattern)
+    if (match?.[1]) return match[1].trim().replace(/[.!?]+$/, '')
+  }
+  return null
+}
+
+export function InsightsPanel({ inputs, outputs, activeYearData, onCityRequested }: InsightsPanelProps) {
   const [question, setQuestion] = useState('')
   const [response, setResponse] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
   const finalYear = outputs.yearlyData[outputs.yearlyData.length - 1]
 
+  const handleCityRequest = async (cityName: string) => {
+    setIsLoading(true)
+    setResponse('')
+    try {
+      const res = await fetch('/api/city-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ city: cityName }),
+      })
+      const data = await res.json()
+      if (data.duplicate) {
+        setResponse(`${data.place_name} has already been requested! Thanks for the enthusiasm.`)
+      } else if (data.success) {
+        setResponse(`Added ${data.place_name} to the map \u2705\nIt now appears as a \"Requested\" marker.`)
+        onCityRequested?.()
+      } else {
+        setResponse(data.error || 'Could not process city request. Try a more specific city name.')
+      }
+    } catch {
+      setResponse('Network error. Please check your connection and try again.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const handleAsk = async (q: string) => {
     if (!q.trim() || isLoading) return
     setQuestion(q)
+
+    // Check for city request intent first
+    const cityName = extractCityRequest(q)
+    if (cityName) {
+      await handleCityRequest(cityName)
+      return
+    }
+
     setIsLoading(true)
     setResponse('')
 

@@ -15,6 +15,7 @@ interface CompactNetworkMapProps {
   bindingCities?: HistoricalAnchorRow[]
   pendingCities?: HistoricalAnchorRow[]
   annotatedCities?: HistoricalAnchorRow[]
+  requestedCities?: HistoricalAnchorRow[]
   onHover?: (yearIndex: number) => void
   onMouseLeave?: () => void
 }
@@ -26,9 +27,9 @@ interface ResolvedCity {
   anchor: HistoricalAnchorRow
 }
 
-type CityStatus = 'anchored' | 'pilot' | 'pending' | 'production' | 'validating'
+type CityStatus = 'anchored' | 'pilot' | 'pending' | 'requested' | 'production' | 'validating'
 
-const PRIORITY_ORDER: CityStatus[] = ['anchored', 'pilot', 'pending', 'production', 'validating']
+const PRIORITY_ORDER: CityStatus[] = ['anchored', 'pilot', 'pending', 'requested', 'production', 'validating']
 
 interface RenderableCity {
   name: string
@@ -49,6 +50,7 @@ const STATUS_COLORS: Record<CityStatus, string> = {
   anchored: '#3b82f6',
   pilot: '#8b5cf6',
   pending: '#f59e0b',
+  requested: '#10b981',
   production: '#94a3b8',
   validating: '#cbd5e1',
 }
@@ -57,6 +59,7 @@ const STATUS_LABELS: Record<CityStatus, string> = {
   anchored: 'Active',
   pilot: 'Testing',
   pending: 'Pending',
+  requested: 'Requested',
   production: 'Projected',
   validating: 'Projected',
 }
@@ -65,6 +68,7 @@ const STATUS_DESCRIPTIONS: Record<CityStatus, string> = {
   anchored: 'Autonomous public service is live.',
   pilot: 'Testing / limited rollout / waitlist / announced. Not full service yet.',
   pending: 'Community submitted. Not reviewed yet.',
+  requested: 'Community requested via Insights.',
   production: 'Model forecast (simulation).',
   validating: 'Model forecast (simulation).',
 }
@@ -88,7 +92,7 @@ function resolveAnchors(rows: HistoricalAnchorRow[], currentYear: number): Resol
   return [...byName.values()]
 }
 
-export function CompactNetworkMap({ inputs, outputs, selectedPreset, yearData, bindingCities = [], pendingCities = [], annotatedCities = [], onHover, onMouseLeave }: CompactNetworkMapProps) {
+export function CompactNetworkMap({ inputs, outputs, selectedPreset, yearData, bindingCities = [], pendingCities = [], annotatedCities = [], requestedCities = [], onHover, onMouseLeave }: CompactNetworkMapProps) {
   const [tooltip, setTooltip] = useState<TooltipData | null>(null)
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 })
   const [tooltipPinned, setTooltipPinned] = useState(false)
@@ -113,14 +117,28 @@ export function CompactNetworkMap({ inputs, outputs, selectedPreset, yearData, b
   const pilotCities = useMemo(() => resolveAnchors(annotatedCities, currentYear), [annotatedCities, currentYear])
   const pendingResolved = useMemo(() => resolveAnchors(pendingCities, currentYear + 5), [pendingCities, currentYear]) // show pending for future years too
 
-  // Build unified, deduped render list with priority: anchored > pilot > pending > projected
+  // Resolve requested cities from metadata coords (not WORLD_CITIES)
+  const requestedResolved = useMemo<ResolvedCity[]>(() => {
+    const resolved: ResolvedCity[] = []
+    for (const a of requestedCities) {
+      if (!a.city) continue
+      const meta = a.metadata as { lat?: number; lon?: number } | undefined
+      if (meta?.lat != null && meta?.lon != null) {
+        resolved.push({ name: a.city, lat: meta.lat, lon: meta.lon, anchor: a })
+      }
+    }
+    return resolved
+  }, [requestedCities])
+
+  // Build unified, deduped render list with priority: anchored > pilot > pending > requested > projected
   const allDbNames = useMemo(() => {
     const names = new Set<string>()
     for (const c of anchoredCities) names.add(c.name.toLowerCase())
     for (const c of pilotCities) names.add(c.name.toLowerCase())
     for (const c of pendingResolved) names.add(c.name.toLowerCase())
+    for (const c of requestedResolved) names.add(c.name.toLowerCase())
     return names
-  }, [anchoredCities, pilotCities, pendingResolved])
+  }, [anchoredCities, pilotCities, pendingResolved, requestedResolved])
 
   const { projectedProduction, projectedValidating } = useMemo(() => {
     const yearsActive = currentYear - inputs.startYear
@@ -163,11 +181,12 @@ export function CompactNetworkMap({ inputs, outputs, selectedPreset, yearData, b
     for (const c of anchoredCities) tryAdd(c.name, c.lat, c.lon, 'anchored', c.anchor)
     for (const c of pilotCities) tryAdd(c.name, c.lat, c.lon, 'pilot', c.anchor)
     for (const c of pendingResolved) tryAdd(c.name, c.lat, c.lon, 'pending', c.anchor)
+    for (const c of requestedResolved) tryAdd(c.name, c.lat, c.lon, 'requested', c.anchor)
     for (const c of projectedProduction) tryAdd(c.name, c.lat, c.lon, 'production')
     for (const c of projectedValidating) tryAdd(c.name, c.lat, c.lon, 'validating')
 
     return [...seen.values()]
-  }, [anchoredCities, pilotCities, pendingResolved, projectedProduction, projectedValidating])
+  }, [anchoredCities, pilotCities, pendingResolved, requestedResolved, projectedProduction, projectedValidating])
 
   const handleMarkerHover = (name: string, status: CityStatus, source: HistoricalAnchorRow | undefined, event: any) => {
     if (tooltipPinned) return
@@ -307,6 +326,9 @@ export function CompactNetworkMap({ inputs, outputs, selectedPreset, yearData, b
                   if (c.status === 'pending') return (
                     <circle r={4 * s} fill="none" stroke="#f59e0b" strokeWidth={1.5 * s} strokeDasharray="2 2" className="cursor-pointer" />
                   )
+                  if (c.status === 'requested') return (
+                    <circle r={4 * s} fill="none" stroke="#10b981" strokeWidth={1.5 * s} className="cursor-pointer" />
+                  )
                   if (c.status === 'production') return (
                     <g>
                       <circle r={5 * s} fill="#94a3b8" opacity={0.2} style={{ filter: 'blur(1px)' }} />
@@ -345,6 +367,13 @@ export function CompactNetworkMap({ inputs, outputs, selectedPreset, yearData, b
           <span>Pending ({pendingResolved.length})</span>
           <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-gray-800 text-white text-[10px] rounded shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
             Community submitted. Not reviewed yet.
+          </div>
+        </div>
+        <div className="relative group flex items-center space-x-1 cursor-pointer">
+          <div className="w-2 h-2 rounded-full border border-emerald-500" />
+          <span>Requested ({requestedResolved.length})</span>
+          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-gray-800 text-white text-[10px] rounded shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+            Community requested via Insights.
           </div>
         </div>
         <div className="relative group flex items-center space-x-1 cursor-pointer">

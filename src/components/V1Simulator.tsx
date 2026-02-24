@@ -20,8 +20,7 @@ export function V1Simulator() {
   const [showInputsDrawer, setShowInputsDrawer] = useState<boolean>(false)
   const [anchors, setAnchors] = useState<HistoricalAnchorRow[]>([])
 
-  // Fetch historical anchors from API
-  useEffect(() => {
+  const fetchAnchors = () => {
     fetch('/api/anchors?company=Waymo', { cache: 'no-store' })
       .then(res => res.json())
       .then(data => {
@@ -32,7 +31,10 @@ export function V1Simulator() {
         }
       })
       .catch(() => {})
-  }, [])
+  }
+
+  // Fetch historical anchors from API
+  useEffect(() => { fetchAnchors() }, [])
 
   // Calculate outputs whenever inputs change
   useEffect(() => {
@@ -109,7 +111,8 @@ export function V1Simulator() {
     bindingCities: anchorSplit.bindingAnchors.filter(a => cityMetrics.includes(a.metric)),
     pendingCities: anchorSplit.pendingPoints.filter(a => cityMetrics.includes(a.metric)),
     annotatedCities: anchorSplit.annotations.filter(a => cityMetrics.includes(a.metric)),
-  }), [anchorSplit])
+    requestedCities: anchors.filter(a => a.metric === 'city_requested'),
+  }), [anchorSplit, anchors])
 
   // Merge simulation data with BINDING anchors only
   const mergedData = useMemo(() => {
@@ -244,6 +247,7 @@ export function V1Simulator() {
                     bindingCities={citySplit.bindingCities}
                     pendingCities={citySplit.pendingCities}
                     annotatedCities={citySplit.annotatedCities}
+                    requestedCities={citySplit.requestedCities}
                   />
                 </div>
 
@@ -276,7 +280,7 @@ export function V1Simulator() {
                 </div>
 
                 {/* Insights */}
-                <InsightsPanel inputs={inputs} outputs={outputs} activeYearData={activeYearData} />
+                <InsightsPanel inputs={inputs} outputs={outputs} activeYearData={activeYearData} onCityRequested={fetchAnchors} />
                </div>
               </div>
             </div>
@@ -318,6 +322,7 @@ export function V1Simulator() {
                     bindingCities={citySplit.bindingCities}
                     pendingCities={citySplit.pendingCities}
                     annotatedCities={citySplit.annotatedCities}
+                    requestedCities={citySplit.requestedCities}
                   />
                 </div>
               ) : (
@@ -350,7 +355,7 @@ export function V1Simulator() {
               )}
 
               {/* Insights — below active view */}
-              <InsightsPanel inputs={inputs} outputs={outputs} activeYearData={activeYearData} />
+              <InsightsPanel inputs={inputs} outputs={outputs} activeYearData={activeYearData} onCityRequested={fetchAnchors} />
             </div>
 
             {/* Mobile Inputs Drawer */}
