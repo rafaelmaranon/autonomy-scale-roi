@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-import { InsightsActionSchema, INSIGHTS_FUNCTION_SCHEMA, type InsightsAction } from '@/lib/insights-schema'
+import { InsightsActionSchema, INSIGHTS_FUNCTION_SCHEMA, normalizePayload, type InsightsAction } from '@/lib/insights-schema'
 
 export const dynamic = 'force-dynamic'
 
@@ -90,23 +90,38 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: false, error: 'No tool call returned from AI' })
     }
 
-    // Parse and validate with Zod
-    let parsed: InsightsAction
+    // Parse, normalize, and validate with Zod
+    const rawStr = fnCall.arguments
+    let rawObj: any
     try {
-      const raw = JSON.parse(fnCall.arguments)
-      parsed = InsightsActionSchema.parse(raw)
-    } catch (parseErr) {
-      console.error('[insights] Schema validation failed:', parseErr)
-      await logAnalytics('insights_message', { action: 'parse_error', latency })
-      return NextResponse.json({ ok: false, error: 'AI returned invalid response schema' })
+      rawObj = JSON.parse(rawStr)
+    } catch {
+      console.error('[insights] JSON parse failed:', rawStr)
+      return NextResponse.json({ ok: false, error: 'AI returned invalid JSON' })
     }
+
+    // Normalize aliases before Zod
+    const normalized = normalizePayload(rawObj)
+    const result = InsightsActionSchema.safeParse(normalized)
+
+    if (!result.success) {
+      console.error('[insights] schema invalid', result.error.flatten(), normalized)
+      await logAnalytics('insights_message', { action: 'parse_error', latency })
+      return NextResponse.json({
+        ok: false,
+        error: 'AI returned invalid response schema',
+        debug: { zod: result.error.flatten(), payload: normalized },
+      }, { status: 502 })
+    }
+
+    const parsed: InsightsAction = result.data
 
     // Log to analytics
     await logAnalytics('insights_message', {
       action_type: parsed.action,
       latency,
       url_domain: fetchedUrl ? new URL(fetchedUrl).hostname : undefined,
-      city_query: parsed.action === 'city_request' ? parsed.city_query : undefined,
+      city_query: parsed.action === 'city_request' ? (parsed as any).city_query : undefined,
     })
 
     // Log to ai_logs for debugging

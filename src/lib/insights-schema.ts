@@ -6,22 +6,22 @@ import { z } from 'zod'
 
 export const KeyLeverSchema = z.object({
   name: z.string(),
-  direction: z.enum(['increase', 'decrease']),
+  direction: z.string(),
   why: z.string(),
-})
+}).passthrough()
 
 export const SuggestedInputSchema = z.object({
   inputKey: z.string(),
   suggestedValue: z.number(),
   reason: z.string(),
-})
+}).passthrough()
 
 export const AnswerActionSchema = z.object({
   action: z.literal('answer'),
   answer_markdown: z.string(),
   key_levers: z.array(KeyLeverSchema).optional(),
   suggested_next_inputs: z.array(SuggestedInputSchema).optional(),
-})
+}).passthrough()
 
 // ---------------------------------------------------------------------------
 // Action: city_request — request a city on the map
@@ -29,12 +29,12 @@ export const AnswerActionSchema = z.object({
 
 export const CityRequestActionSchema = z.object({
   action: z.literal('city_request'),
-  city_query: z.string(),
-  needs_clarification: z.boolean(),
+  city_query: z.string().optional(),
+  needs_clarification: z.boolean().optional(),
   clarification_question: z.string().optional(),
   user_display_name: z.string().nullable().optional(),
   user_link: z.string().nullable().optional(),
-})
+}).passthrough()
 
 // ---------------------------------------------------------------------------
 // Action: url_extract — extract datapoints from a news URL
@@ -48,20 +48,20 @@ export const CandidateSchema = z.object({
   value: z.number(),
   unit: z.string(),
   city: z.string().nullable().optional(),
-  source_title: z.string(),
-  source_publisher: z.string(),
+  source_title: z.string().optional(),
+  source_publisher: z.string().optional(),
   source_date: z.string().nullable().optional(),
-  source_url: z.string(),
-  evidence_quote: z.string(),
-  confidence: z.literal('pending'),
-  status: z.literal('proposed'),
-})
+  source_url: z.string().optional(),
+  evidence_quote: z.string().optional(),
+  confidence: z.string().optional(),
+  status: z.string().optional(),
+}).passthrough()
 
 export const UrlExtractActionSchema = z.object({
   action: z.literal('url_extract'),
-  url: z.string(),
-  candidates: z.array(CandidateSchema),
-})
+  url: z.string().optional(),
+  candidates: z.array(CandidateSchema).optional(),
+}).passthrough()
 
 // ---------------------------------------------------------------------------
 // Union schema — the model must return exactly one of these
@@ -78,6 +78,44 @@ export type AnswerAction = z.infer<typeof AnswerActionSchema>
 export type CityRequestAction = z.infer<typeof CityRequestActionSchema>
 export type UrlExtractAction = z.infer<typeof UrlExtractActionSchema>
 export type Candidate = z.infer<typeof CandidateSchema>
+
+// ---------------------------------------------------------------------------
+// Normalize raw OpenAI payload before Zod validation
+// Handles model alias quirks (city vs cityName, url vs urls, etc.)
+// ---------------------------------------------------------------------------
+
+export function normalizePayload(raw: any): any {
+  if (!raw || typeof raw !== 'object') return raw
+  const p = { ...raw }
+
+  // Normalize city_request aliases
+  if (p.action === 'city_request') {
+    p.city_query = p.city_query ?? p.cityQuery ?? p.city ?? p.cityName ?? p.place ?? ''
+    p.needs_clarification = p.needs_clarification ?? p.needsClarification ?? false
+    p.clarification_question = p.clarification_question ?? p.clarificationQuestion ?? p.clarification ?? undefined
+  }
+
+  // Normalize url_extract aliases
+  if (p.action === 'url_extract') {
+    p.url = p.url ?? p.urls?.[0] ?? p.source_url ?? ''
+    p.candidates = p.candidates ?? p.datapoints ?? p.anchors ?? p.data ?? []
+
+    // Force confidence/status on each candidate
+    if (Array.isArray(p.candidates)) {
+      p.candidates = p.candidates.map((c: any) => ({
+        ...c,
+        confidence: 'pending',
+        status: 'proposed',
+        source_url: c.source_url ?? p.url ?? '',
+        source_title: c.source_title ?? c.title ?? '',
+        source_publisher: c.source_publisher ?? c.publisher ?? '',
+        evidence_quote: c.evidence_quote ?? c.quote ?? c.excerpt ?? '',
+      }))
+    }
+  }
+
+  return p
+}
 
 // ---------------------------------------------------------------------------
 // Vague city stoplist — trigger clarification instead of geocoding
