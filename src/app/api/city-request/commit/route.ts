@@ -30,16 +30,21 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Insert
+    // Insert - match working anchors pattern
     const row = {
       company: 'Waymo',
       metric: 'city_requested',
       city: cityShort,
-      year: new Date().getFullYear(),
-      value: 1,
+      year: Number(new Date().getFullYear()),
+      month: null,
+      value: Number(1),
       unit: 'count',
       confidence: 'pending',
       status: 'proposed',
+      source_title: null,
+      source_publisher: null,
+      source_date: null,
+      source_url: null,
       metadata: {
         lat: result.lat,
         lon: result.lon,
