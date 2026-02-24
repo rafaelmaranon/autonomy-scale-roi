@@ -63,8 +63,8 @@ export async function POST(request: NextRequest) {
           { role: 'system', content: systemPrompt },
           { role: 'user', content: message },
         ],
-        functions: [INSIGHTS_FUNCTION_SCHEMA],
-        function_call: { name: 'insights_action' },
+        tools: [{ type: 'function', function: INSIGHTS_FUNCTION_SCHEMA }],
+        tool_choice: { type: 'function', function: { name: 'insights_action' } },
         temperature: 0.4,
         max_tokens: 1500,
       }),
@@ -80,7 +80,8 @@ export async function POST(request: NextRequest) {
     }
 
     const aiData = await openaiRes.json()
-    const fnCall = aiData.choices?.[0]?.message?.function_call
+    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0]
+    const fnCall = toolCall?.function
 
     if (!fnCall?.arguments) {
       await logAnalytics('insights_message', { action: 'no_function_call', latency })

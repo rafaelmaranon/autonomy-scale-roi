@@ -101,11 +101,9 @@ export function isVagueCityQuery(query: string): boolean {
 export const INSIGHTS_FUNCTION_SCHEMA = {
   name: 'insights_action',
   description: 'Return a structured action based on the user message.',
-  strict: true,
   parameters: {
     type: 'object',
     required: ['action'],
-    additionalProperties: false,
     properties: {
       action: {
         type: 'string',
