@@ -27,7 +27,7 @@ export const metadata: Metadata = {
     description,
     images: [
       {
-        url: "/api/og",
+        url: `/api/og?t=${Date.now()}`,
         width: 1200,
         height: 630,
         alt: "Autonomy Scale ROI — interactive autonomy economics simulator",
@@ -38,7 +38,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Autonomy Scale ROI",
     description,
-    images: ["/api/og"],
+    images: [`/api/og?t=${Date.now()}`],
   },
 };
 
