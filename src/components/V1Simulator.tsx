@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { ChevronDown, RotateCcw, SlidersHorizontal, X } from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
+import { ChevronDown, SlidersHorizontal, X } from 'lucide-react'
 import { SimInputs, SimOutputs, SimYearData, ProfileConfig, profiles, getProfileByName } from '@/lib/sim-types'
 import { SimCalculator } from '@/lib/sim-calculator'
 import { analytics } from '@/lib/analytics'
 import { CapitalCurveChart } from './CapitalCurveChart'
+import { HistoricalAnchorRow, mergeTimeline, MergedYearData, splitAnchors, SplitAnchors, getDebugInfo } from '@/lib/timeline-merger'
 import { CompactNetworkMap } from './CompactNetworkMap'
 import { InsightsPanel } from './InsightsPanel'
 
@@ -17,6 +18,21 @@ export function V1Simulator() {
   const [chartView, setChartView] = useState<string>('netCash')
   const [activeView, setActiveView] = useState<'map' | 'chart'>('map')
   const [showInputsDrawer, setShowInputsDrawer] = useState<boolean>(false)
+  const [anchors, setAnchors] = useState<HistoricalAnchorRow[]>([])
+
+  // Fetch historical anchors from API
+  useEffect(() => {
+    fetch('/api/anchors?company=Waymo', { cache: 'no-store' })
+      .then(res => res.json())
+      .then(data => {
+        if (data.anchors) {
+          const cityRows = data.anchors.filter((a: any) => a.city)
+          console.log('[Anchors] Raw city rows from API:', cityRows.map((r: any) => `${r.city} | year=${r.year} | metric=${r.metric} | conf=${r.confidence} | stat=${r.status}`))
+          setAnchors(data.anchors)
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   // Calculate outputs whenever inputs change
   useEffect(() => {
@@ -76,8 +92,33 @@ export function V1Simulator() {
     }
   }
 
-  // Get active year data for display
-  const activeYearData = outputs?.yearlyData[activeYearIndex]
+  // Split raw anchors into binding / pending / annotations
+  const anchorSplit = useMemo<SplitAnchors>(() => splitAnchors(anchors), [anchors])
+
+  // Debug info (logged once when anchors change)
+  useEffect(() => {
+    if (anchors.length > 0) {
+      const info = getDebugInfo(anchors)
+      console.log('[Anchors Debug]', info)
+    }
+  }, [anchors])
+
+  // Filter city-specific anchors for the map
+  const cityMetrics = ['city_active', 'city_pilot']
+  const citySplit = useMemo(() => ({
+    bindingCities: anchorSplit.bindingAnchors.filter(a => cityMetrics.includes(a.metric)),
+    pendingCities: anchorSplit.pendingPoints.filter(a => cityMetrics.includes(a.metric)),
+    annotatedCities: anchorSplit.annotations.filter(a => cityMetrics.includes(a.metric)),
+  }), [anchorSplit])
+
+  // Merge simulation data with BINDING anchors only
+  const mergedData = useMemo(() => {
+    if (!outputs) return null
+    return mergeTimeline(outputs.yearlyData, anchorSplit.bindingAnchors)
+  }, [outputs, anchorSplit.bindingAnchors])
+
+  // Get active year data for display (from merged timeline)
+  const activeYearData = mergedData?.[activeYearIndex]
   const activeYear = activeYearData?.year || inputs.startYear + inputs.yearsToSimulate - 1
 
   return (
@@ -111,14 +152,6 @@ export function V1Simulator() {
                 <SlidersHorizontal size={16} />
               </button>
 
-              {/* Reset Button */}
-              <button
-                onClick={() => handleProfileChange('Waymo')}
-                className="flex items-center space-x-1 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-xs font-medium"
-              >
-                <RotateCcw size={12} />
-                <span>Reset</span>
-              </button>
             </div>
           </div>
         </div>
@@ -126,13 +159,13 @@ export function V1Simulator() {
 
       {/* Main Content */}
       <main className="flex-1 min-h-0 flex flex-col">
-        {outputs && activeYearData && (
+        {outputs && mergedData && activeYearData && (
           <>
             {/* KPI Strip */}
             <div className="px-4 md:px-6 py-2 border-b border-gray-100 bg-white">
-              <div className="flex items-center gap-6 md:gap-10">
+              <div className="flex items-center gap-3 md:gap-10">
                 <span className="text-xs text-gray-400 flex-shrink-0">{activeYear}</span>
-                <div className="flex gap-6 md:gap-10 overflow-x-auto">
+                <div className="flex gap-3 md:gap-10 overflow-x-auto">
                   <div className="flex-shrink-0">
                     <div className="text-sm font-bold text-gray-900">${(activeYearData.cumulativeNetCash / 1e9).toFixed(1)}B</div>
                     <div className="text-[11px] text-gray-400">Net cash (cum.)</div>
@@ -208,6 +241,9 @@ export function V1Simulator() {
                     outputs={outputs}
                     selectedPreset={selectedProfile}
                     yearData={activeYearData}
+                    bindingCities={citySplit.bindingCities}
+                    pendingCities={citySplit.pendingCities}
+                    annotatedCities={citySplit.annotatedCities}
                   />
                 </div>
 
@@ -217,7 +253,7 @@ export function V1Simulator() {
                     <select
                       value={chartView}
                       onChange={(e) => setChartView(e.target.value)}
-                      className="text-xs font-medium text-gray-700 border border-gray-200 rounded px-2 py-1 bg-white"
+                      className="text-xs font-medium text-gray-700 border border-gray-200 rounded px-2 py-1 bg-white cursor-pointer relative z-20 hover:border-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-300"
                     >
                       <option value="netCash">Net cash (cumulative)</option>
                       <option value="paidTrips">Paid trips/week</option>
@@ -227,9 +263,12 @@ export function V1Simulator() {
                   </div>
                   <div className="flex-1 min-h-0">
                     <CapitalCurveChart 
-                      data={outputs.yearlyData}
+                      data={mergedData}
                       chartView={chartView}
                       activeIndex={activeYearIndex}
+                      bindingAnchors={anchorSplit.bindingAnchors}
+                      pendingPoints={anchorSplit.pendingPoints}
+                      annotations={anchorSplit.annotations}
                       onHover={handleChartHover}
                       onMouseLeave={handleChartLeave}
                     />
@@ -276,6 +315,9 @@ export function V1Simulator() {
                     outputs={outputs}
                     selectedPreset={selectedProfile}
                     yearData={activeYearData}
+                    bindingCities={citySplit.bindingCities}
+                    pendingCities={citySplit.pendingCities}
+                    annotatedCities={citySplit.annotatedCities}
                   />
                 </div>
               ) : (
@@ -284,7 +326,7 @@ export function V1Simulator() {
                     <select
                       value={chartView}
                       onChange={(e) => setChartView(e.target.value)}
-                      className="text-xs font-medium text-gray-700 border border-gray-200 rounded px-2 py-1 bg-white"
+                      className="text-xs font-medium text-gray-700 border border-gray-200 rounded px-2 py-1 bg-white cursor-pointer relative z-20 hover:border-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-300"
                     >
                       <option value="netCash">Net cash (cumulative)</option>
                       <option value="paidTrips">Paid trips/week</option>
@@ -294,9 +336,12 @@ export function V1Simulator() {
                   </div>
                   <div className="h-[360px]">
                     <CapitalCurveChart 
-                      data={outputs.yearlyData}
+                      data={mergedData}
                       chartView={chartView}
                       activeIndex={activeYearIndex}
+                      bindingAnchors={anchorSplit.bindingAnchors}
+                      pendingPoints={anchorSplit.pendingPoints}
+                      annotations={anchorSplit.annotations}
                       onHover={handleChartHover}
                       onMouseLeave={handleChartLeave}
                     />
@@ -366,7 +411,7 @@ export function V1Simulator() {
 
       {/* Version stamp — always visible */}
       <div className="fixed bottom-1 right-2 text-[10px] text-gray-400">
-        v0.4.1 — Scrub &amp; Source
+        v0.5.1
       </div>
     </div>
   )

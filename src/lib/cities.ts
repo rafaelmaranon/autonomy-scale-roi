@@ -26,6 +26,18 @@ export const WORLD_CITIES: City[] = [
   { name: 'Dallas', country: 'USA', lat: 32.7767, lon: -96.7970, region: 'North America' },
   { name: 'Houston', country: 'USA', lat: 29.7604, lon: -95.3698, region: 'North America' },
   { name: 'Phoenix', country: 'USA', lat: 33.4484, lon: -112.0740, region: 'North America' },
+  { name: 'Austin', country: 'USA', lat: 30.2672, lon: -97.7431, region: 'North America' },
+  { name: 'Detroit', country: 'USA', lat: 42.3314, lon: -83.0458, region: 'North America' },
+  { name: 'Minneapolis', country: 'USA', lat: 44.9778, lon: -93.2650, region: 'North America' },
+  { name: 'Las Vegas', country: 'USA', lat: 36.1699, lon: -115.1398, region: 'North America' },
+  { name: 'San Diego', country: 'USA', lat: 32.7157, lon: -117.1611, region: 'North America' },
+  { name: 'Tampa', country: 'USA', lat: 27.9506, lon: -82.4572, region: 'North America' },
+  { name: 'Pittsburgh', country: 'USA', lat: 40.4406, lon: -79.9959, region: 'North America' },
+  { name: 'Baltimore', country: 'USA', lat: 39.2904, lon: -76.6122, region: 'North America' },
+  { name: 'New Orleans', country: 'USA', lat: 29.9511, lon: -90.0715, region: 'North America' },
+  { name: 'Philadelphia', country: 'USA', lat: 39.9526, lon: -75.1652, region: 'North America' },
+  { name: 'St Louis', country: 'USA', lat: 38.6270, lon: -90.1994, region: 'North America' },
+  { name: 'Buffalo', country: 'USA', lat: 42.8864, lon: -78.8784, region: 'North America' },
   { name: 'Denver', country: 'USA', lat: 39.7392, lon: -104.9903, region: 'North America' },
   { name: 'Vancouver', country: 'Canada', lat: 49.2827, lon: -123.1207, region: 'North America' },
   { name: 'Montreal', country: 'Canada', lat: 45.5017, lon: -73.5673, region: 'North America' },
@@ -120,6 +132,23 @@ export const WORLD_CITIES: City[] = [
   { name: 'Quito', country: 'Ecuador', lat: -0.1807, lon: -78.4678, region: 'South America' },
   { name: 'Montevideo', country: 'Uruguay', lat: -34.9011, lon: -56.1645, region: 'South America' }
 ]
+
+// Lookup a city by name (case-insensitive, trimmed). Returns coords or null.
+export function findCityByName(name: string): City | null {
+  const normalized = name.trim().toLowerCase()
+  return WORLD_CITIES.find(c => c.name.toLowerCase() === normalized) || null
+}
+
+// Resolve coordinates for an anchor row: try city name match, then metadata fallback
+export function resolveCityCoords(
+  cityName: string,
+  metadata?: { lat?: number; lon?: number } | null
+): { lat: number; lon: number } | null {
+  const match = findCityByName(cityName)
+  if (match) return { lat: match.lat, lon: match.lon }
+  if (metadata?.lat != null && metadata?.lon != null) return { lat: metadata.lat, lon: metadata.lon }
+  return null
+}
 
 // Deterministic city selection based on preset and target cities
 export function selectCities(targetCities: number, presetName: string = 'Base Case'): City[] {

@@ -1,9 +1,12 @@
 'use client'
 
-import { useRef, useCallback } from 'react'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
+import { useRef, useCallback, useMemo } from 'react'
+import { ComposedChart, Line, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
 import { SimYearData } from '@/lib/sim-types'
-import { WAYMO_PUBLIC_ANCHORS } from '@/lib/historical-anchors'
+import { HistoricalAnchorRow, getMetricsForView, getLastAnchorYear, formatSmartNumber } from '@/lib/timeline-merger'
+
+// Re-export for backward compat
+export type { HistoricalAnchorRow } from '@/lib/timeline-merger'
 
 // Chart left/right margins must match the margin prop on LineChart
 const CHART_MARGIN_LEFT = 64 // left margin (8) + YAxis width (~56)
@@ -13,11 +16,37 @@ interface CapitalCurveChartProps {
   data: SimYearData[]
   chartView?: string
   activeIndex?: number
+  bindingAnchors?: HistoricalAnchorRow[]
+  pendingPoints?: HistoricalAnchorRow[]
+  annotations?: HistoricalAnchorRow[]
   onHover?: (index: number) => void
   onMouseLeave?: () => void
 }
 
-export function CapitalCurveChart({ data, chartView = 'netCash', activeIndex, onHover, onMouseLeave }: CapitalCurveChartProps) {
+function openSource(row?: HistoricalAnchorRow) {
+  if (row?.source_url) {
+    window.open(row.source_url, '_blank', 'noopener,noreferrer')
+  }
+}
+
+// Custom tooltip for overlay dots — read-only (click dot to open source)
+function OverlayTooltip({ active, payload }: any) {
+  if (!active || !payload?.[0]?.payload?._overlay) return null
+  const d = payload[0].payload._overlay as HistoricalAnchorRow
+  return (
+    <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-2 text-xs max-w-[220px] pointer-events-none">
+      <div className="font-bold text-gray-900">{d.source_title || d.metric}</div>
+      {d.source_publisher && <div className="text-gray-500">{d.source_publisher} · {d.source_date}</div>}
+      <div className="font-medium mt-1">{formatSmartNumber(d.value)} {d.unit}</div>
+      {d.contributor_name && d.show_contributor && (
+        <div className="text-gray-400 mt-1">by {d.contributor_name}</div>
+      )}
+      {d.source_url && <div className="text-blue-500 mt-1">Click dot to open source ↗</div>}
+    </div>
+  )
+}
+
+export function CapitalCurveChart({ data, chartView = 'netCash', activeIndex, bindingAnchors = [], pendingPoints = [], annotations = [], onHover, onMouseLeave }: CapitalCurveChartProps) {
   const chartRef = useRef<HTMLDivElement>(null)
   const isOverStrip = useRef(false)
 
@@ -47,9 +76,9 @@ export function CapitalCurveChart({ data, chartView = 'netCash', activeIndex, on
   const handleMouseLeave = useCallback(() => {
     if (onMouseLeave) onMouseLeave()
   }, [onMouseLeave])
+
   // Find break-even point (only for Net Cash view)
   const breakEvenPoint = chartView === 'netCash' ? data.find(d => d.cumulativeNetCash >= 0) : null
-  const currentYear = 2026
   
   // Get data field and formatting based on chart view
   const getChartConfig = () => {
@@ -58,35 +87,40 @@ export function CapitalCurveChart({ data, chartView = 'netCash', activeIndex, on
         return { 
           dataKey: 'paidTripsPerWeek', 
           color: '#3b82f6',
-          formatValue: (value: number) => `${(value / 1000).toFixed(0)}K trips/week`,
+          unit: 'trips/week',
+          formatValue: (value: number) => `${formatSmartNumber(value)} trips/week`,
           yAxisDomain: [0, 'dataMax']
         }
       case 'fleetSize':
         return { 
           dataKey: 'vehiclesProduction', 
           color: '#10b981',
-          formatValue: (value: number) => `${(value / 1000).toFixed(0)}K vehicles`,
+          unit: 'vehicles',
+          formatValue: (value: number) => `${formatSmartNumber(value)} vehicles`,
           yAxisDomain: [0, 'dataMax']
         }
       case 'productionMiles':
         return { 
           dataKey: 'productionMiles', 
           color: '#8b5cf6',
-          formatValue: (value: number) => `${(value / 1e9).toFixed(1)}B miles/year`,
+          unit: 'miles/year',
+          formatValue: (value: number) => `${formatSmartNumber(value)} miles/year`,
           yAxisDomain: [0, 'dataMax']
         }
       case 'validationMiles':
         return { 
           dataKey: 'validationMiles', 
           color: '#f59e0b',
-          formatValue: (value: number) => `${(value / 1e9).toFixed(1)}B miles/year`,
+          unit: 'miles/year',
+          formatValue: (value: number) => `${formatSmartNumber(value)} miles/year`,
           yAxisDomain: [0, 'dataMax']
         }
       default: // netCash
         return { 
           dataKey: 'cumulativeNetCash', 
           color: '#3b82f6',
-          formatValue: (value: number) => `$${(value / 1e9).toFixed(0)}B`,
+          unit: '',
+          formatValue: (value: number) => `$${formatSmartNumber(value)}`,
           yAxisDomain: [-100e9, 150e9]
         }
     }
@@ -94,8 +128,41 @@ export function CapitalCurveChart({ data, chartView = 'netCash', activeIndex, on
   
   const chartConfig = getChartConfig()
 
+  // Filter overlays for this chart view
+  const viewMetrics = getMetricsForView(chartView)
+  const lastAnchorYear = getLastAnchorYear(bindingAnchors, chartView)
+  const viewBindingAnchors = bindingAnchors.filter(a => viewMetrics.includes(a.metric))
+
+  // Build chart data with historical/forecast split + overlay scatter points
+  const { chartData, pendingScatter, annotationScatter } = useMemo(() => {
+    const cd = data.map(d => {
+      const val = (d as any)[chartConfig.dataKey]
+      const source = (d as any)._sources?.[chartConfig.dataKey] || 'simulated'
+      const isHistorical = lastAnchorYear !== null && d.year <= lastAnchorYear
+      
+      return {
+        ...d,
+        _historicalValue: isHistorical ? val : undefined,
+        _forecastValue: (!lastAnchorYear || d.year >= lastAnchorYear) ? val : undefined,
+        _source: source,
+        _isAnchor: source === 'anchor',
+      }
+    })
+
+    // Build scatter data for pending points and annotations
+    const pScatter = pendingPoints
+      .filter(a => viewMetrics.includes(a.metric))
+      .map(a => ({ year: a.year, _overlayValue: Number(a.value), _overlay: a }))
+
+    const aScatter = annotations
+      .filter(a => viewMetrics.includes(a.metric))
+      .map(a => ({ year: a.year, _overlayValue: Number(a.value), _overlay: a }))
+
+    return { chartData: cd, pendingScatter: pScatter, annotationScatter: aScatter }
+  }, [data, chartConfig.dataKey, lastAnchorYear, pendingPoints, annotations, viewMetrics])
+
   // Active data point (driven by parent via activeIndex)
-  const activeData = activeIndex != null ? data[activeIndex] : null
+  const activeData = activeIndex != null ? chartData[activeIndex] : null
 
   const firstYear = data[0]?.year
   const lastYear = data[data.length - 1]?.year
@@ -108,40 +175,43 @@ export function CapitalCurveChart({ data, chartView = 'netCash', activeIndex, on
       onMouseLeave={handleMouseLeave}
       onTouchMove={handleTouchMove}
     >
-      {/* Value strip — shows active year + value + sourced anchor if available */}
+      {/* Value strip — shows active year + value + source info */}
       {activeData && (() => {
-        const anchor = WAYMO_PUBLIC_ANCHORS.find(a => a.year === activeData.year)
-        const formatAnchorValue = (v: number) => v >= 1e6 ? `${(v / 1e6).toFixed(1)}M` : v >= 1e3 ? `${(v / 1e3).toFixed(0)}K` : v.toString()
+        const source = activeData._source
+        const anchor = viewBindingAnchors.find(a => a.year === activeData.year)
+        const value = (activeData as any)[chartConfig.dataKey]
         return (
           <div
-            className="absolute top-0 left-16 right-4 flex items-center gap-2 text-xs z-10 py-1"
+            className="absolute top-0 left-16 right-4 flex flex-wrap items-center gap-x-2 gap-y-0 text-xs z-10 py-1"
             onMouseEnter={() => { isOverStrip.current = true }}
             onMouseLeave={() => { isOverStrip.current = false }}
           >
-            <span className="font-medium text-gray-900 pointer-events-none">{activeData.year}</span>
+            <span className="font-medium text-gray-900 pointer-events-none whitespace-nowrap">{activeData.year}</span>
             <span className="text-gray-400 pointer-events-none">|</span>
-            <span className="font-bold text-gray-900 pointer-events-none">{chartConfig.formatValue((activeData as any)[chartConfig.dataKey])}</span>
-            {anchor && (
-              <>
-                <span className="text-gray-300 pointer-events-none">·</span>
-                <span className="text-emerald-600 pointer-events-none">Sourced: {formatAnchorValue(anchor.value)} {anchor.unit}</span>
+            <span className="font-bold text-gray-900 pointer-events-none whitespace-nowrap">{chartConfig.formatValue(value)}</span>
+            {source === 'anchor' && anchor && (
+              <span className="flex items-center gap-1 whitespace-nowrap">
+                <span className="text-emerald-600 pointer-events-none">· Sourced</span>
                 <a
-                  href={anchor.source.url}
+                  href={anchor.source_url || '#'}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-emerald-600 hover:text-emerald-800 underline"
+                  className="text-emerald-600 hover:text-emerald-800 underline truncate max-w-[140px] md:max-w-none"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  {anchor.source.publisher} ↗
+                  {anchor.source_publisher} ↗
                 </a>
-              </>
+              </span>
+            )}
+            {source === 'simulated' && (
+              <span className="text-gray-400 pointer-events-none whitespace-nowrap">· Forecast</span>
             )}
           </div>
         )
       })()}
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart
-          data={data}
+        <ComposedChart
+          data={chartData}
           margin={{ top: 20, right: 16, left: 8, bottom: 4 }}
         >
           <CartesianGrid vertical={false} stroke="#f3f4f6" strokeWidth={0.5} />
@@ -161,32 +231,32 @@ export function CapitalCurveChart({ data, chartView = 'netCash', activeIndex, on
             tick={{ fontSize: 12, fill: '#6b7280' }}
             width={56}
             domain={chartConfig.yAxisDomain as any}
+            allowDecimals={false}
+            tickCount={6}
             tickFormatter={(value) => {
               if (chartView === 'netCash') {
-                return `$${(value / 1e9).toFixed(0)}B`
-              } else if (chartView === 'paidTrips') {
-                return `${(value / 1000).toFixed(0)}K`
-              } else if (chartView === 'fleetSize') {
-                return `${(value / 1000).toFixed(0)}K`
-              } else {
-                return `${(value / 1e9).toFixed(1)}B`
+                return `$${formatSmartNumber(value)}`
               }
+              return formatSmartNumber(value)
             }}
           />
-          <Tooltip content={() => null} cursor={false} isAnimationActive={false} />
+          <Tooltip content={<OverlayTooltip />} cursor={false} isAnimationActive={false} />
           
           {/* Reference lines - only for Net Cash view */}
           {chartView === 'netCash' && (
             <>
               {/* Zero baseline - break-even line */}
               <ReferenceLine y={0} stroke="#6b7280" strokeWidth={1.5} strokeDasharray="2 2" />
-              {/* Today marker */}
-              <ReferenceLine x={currentYear} stroke="#374151" strokeWidth={2} strokeDasharray="4 4" />
               {/* Break-even marker */}
               {breakEvenPoint && (
                 <ReferenceLine x={breakEvenPoint.year} stroke="#059669" strokeWidth={2} strokeDasharray="4 4" />
               )}
             </>
+          )}
+
+          {/* Last anchor year divider — boundary between history and forecast */}
+          {lastAnchorYear && (
+            <ReferenceLine x={lastAnchorYear} stroke="#9ca3af" strokeWidth={1.5} strokeDasharray="4 4" label={{ value: 'Last sourced', position: 'top', fontSize: 10, fill: '#9ca3af' }} />
           )}
           
           {/* Active year vertical indicator */}
@@ -194,36 +264,80 @@ export function CapitalCurveChart({ data, chartView = 'netCash', activeIndex, on
             <ReferenceLine x={activeData.year} stroke="#9ca3af" strokeWidth={1} strokeDasharray="3 3" />
           )}
 
-          {/* Main line */}
+          {/* Historical line — solid, with clickable dots at anchor points */}
+          {lastAnchorYear && (
+            <Line 
+              type="monotone" 
+              dataKey="_historicalValue"
+              stroke={chartConfig.color}
+              strokeWidth={2.5}
+              dot={(props: any) => {
+                const { cx, cy, payload } = props
+                if (payload?._isAnchor && cx != null && cy != null) {
+                  const anchor = viewBindingAnchors.find((a: HistoricalAnchorRow) => a.year === payload.year)
+                  return (
+                    <circle
+                      key={`adot-${payload.year}`}
+                      cx={cx} cy={cy} r={4}
+                      fill={chartConfig.color} stroke="white" strokeWidth={2}
+                      style={{ cursor: anchor?.source_url ? 'pointer' : 'default' }}
+                      onClick={() => openSource(anchor)}
+                    />
+                  )
+                }
+                return <circle key={`ndot-${payload?.year}`} cx={cx} cy={cy} r={0} fill="transparent" />
+              }}
+              activeDot={false}
+              connectNulls={false}
+              isAnimationActive={false}
+            />
+          )}
+
+          {/* Forecast line — dashed */}
           <Line 
             type="monotone" 
-            dataKey={chartConfig.dataKey}
+            dataKey={lastAnchorYear ? '_forecastValue' : chartConfig.dataKey}
             stroke={chartConfig.color}
             strokeWidth={2.5}
+            strokeDasharray={lastAnchorYear ? '6 3' : undefined}
             dot={false}
             activeDot={false}
+            connectNulls={false}
+            isAnimationActive={false}
           />
-          
-          {/* Historical anchor dots - only for Net Cash view */}
-          {chartView === 'netCash' && WAYMO_PUBLIC_ANCHORS.map((anchor, index) => {
-            const dataPoint = data.find(d => d.year === anchor.year)
-            if (dataPoint) {
-              return (
-                <Line
-                  key={`anchor-${anchor.year}-${index}`}
-                  type="monotone"
-                  dataKey="cumulativeNetCash"
-                  stroke="transparent"
-                  strokeWidth={0}
-                  dot={{ r: 3, fill: '#10b981', stroke: '#10b981', strokeWidth: 1 }}
-                  activeDot={false}
-                  data={[dataPoint]}
-                />
-              )
-            }
-            return null
-          })}
-        </LineChart>
+
+          {/* Pending preview dots — yellow, clickable */}
+          {pendingScatter.length > 0 && (
+            <Scatter
+              data={pendingScatter}
+              dataKey="_overlayValue"
+              fill="#f59e0b"
+              stroke="white"
+              strokeWidth={2}
+              r={5}
+              shape="circle"
+              isAnimationActive={false}
+              cursor="pointer"
+              onClick={(data: any) => openSource(data?._overlay)}
+            />
+          )}
+
+          {/* Approved annotation dots — purple, clickable */}
+          {annotationScatter.length > 0 && (
+            <Scatter
+              data={annotationScatter}
+              dataKey="_overlayValue"
+              fill="#8b5cf6"
+              stroke="white"
+              strokeWidth={2}
+              r={5}
+              shape="diamond"
+              isAnimationActive={false}
+              cursor="pointer"
+              onClick={(data: any) => openSource(data?._overlay)}
+            />
+          )}
+        </ComposedChart>
       </ResponsiveContainer>
     </div>
   )

@@ -41,16 +41,18 @@ export class SimCalculator {
     previousData: SimYearData[]
   ): SimYearData {
     
-    // Calculate cities and vehicles
-    const citiesTotal = Math.min((yearOffset + 1) * inputs.citiesPerYear, inputs.citiesPerYear * inputs.yearsToSimulate)
+    // Calculate cities and vehicles — cohorts only accumulate from opsRevenueStartYear
+    const opsStartOffset = inputs.opsRevenueStartYear - inputs.startYear
+    const expansionYears = Math.max(0, yearOffset - opsStartOffset + 1)
+    const citiesTotal = expansionYears * inputs.citiesPerYear
     
     let vehiclesTotal = 0
     let vehiclesProduction = 0
     let vehiclesValidation = 0
     
-    // Calculate vehicles across all city cohorts
-    for (let cohortYear = 0; cohortYear <= yearOffset; cohortYear++) {
-      const cohortAge = yearOffset - cohortYear + 1
+    // Calculate vehicles across city cohorts (starting from opsRevenueStartYear)
+    for (let cohortIdx = 0; cohortIdx < expansionYears; cohortIdx++) {
+      const cohortAge = expansionYears - cohortIdx
       const rampProgress = Math.min(1, cohortAge / inputs.rampTimePerCity)
       const cohortVehicles = inputs.citiesPerYear * inputs.vehiclesPerCity * rampProgress
       

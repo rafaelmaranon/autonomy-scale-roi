@@ -16,7 +16,7 @@ export const waymoProfile: ProfileConfig = {
   inputs: {
     startYear: 2004,
     yearsToSimulate: 46, // 2004-2050
-    citiesPerYear: 4, // Slower expansion for realistic curve
+    citiesPerYear: 10, // Expansion rate for city launches
     vehiclesPerCity: 1500, // Conservative fleet size
     profitPerMile: 0.50, // Lower margin initially
     annualRDSpend: 1.2, // Sustained R&D investment
