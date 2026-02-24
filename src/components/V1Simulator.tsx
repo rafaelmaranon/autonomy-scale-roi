@@ -280,7 +280,7 @@ export function V1Simulator() {
                 </div>
 
                 {/* Insights */}
-                <InsightsPanel inputs={inputs} outputs={outputs} activeYearData={activeYearData} onCityRequested={fetchAnchors} />
+                <InsightsPanel inputs={inputs} outputs={outputs} activeYearData={activeYearData} onCityRequested={fetchAnchors} onAnchorsChanged={fetchAnchors} />
                </div>
               </div>
             </div>
@@ -355,7 +355,7 @@ export function V1Simulator() {
               )}
 
               {/* Insights — below active view */}
-              <InsightsPanel inputs={inputs} outputs={outputs} activeYearData={activeYearData} onCityRequested={fetchAnchors} />
+              <InsightsPanel inputs={inputs} outputs={outputs} activeYearData={activeYearData} onCityRequested={fetchAnchors} onAnchorsChanged={fetchAnchors} />
             </div>
 
             {/* Mobile Inputs Drawer */}

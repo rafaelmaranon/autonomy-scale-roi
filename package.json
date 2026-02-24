@@ -19,7 +19,8 @@
     "react-dom": "19.2.3",
     "react-simple-maps": "^3.0.0",
     "recharts": "^3.7.0",
-    "uuid": "^13.0.0"
+    "uuid": "^13.0.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
