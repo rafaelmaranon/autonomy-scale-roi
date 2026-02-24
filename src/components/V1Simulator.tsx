@@ -301,8 +301,9 @@ export function V1Simulator() {
                 </div>
 
                 {/* Chart */}
-                <div className="h-[35vh] min-h-[240px] flex flex-col mt-2">
-                  <div className="flex justify-between items-center mb-3">
+                <div className="flex flex-col mt-4 mb-4">
+                  {/* Chart Controls */}
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-2 mb-3">
                     <select
                       value={chartView}
                       onChange={(e) => setChartView(e.target.value)}
@@ -314,7 +315,9 @@ export function V1Simulator() {
                       <option value="productionMiles">Miles (cumulative)</option>
                     </select>
                   </div>
-                  <div className="flex-1 min-h-0">
+                  
+                  {/* Chart Container */}
+                  <div className="h-[35vh] min-h-[240px] mb-3">
                     <CapitalCurveChart 
                       data={mergedData}
                       chartView={chartView}
@@ -329,7 +332,9 @@ export function V1Simulator() {
                 </div>
 
                 {/* Insights */}
-                <InsightsPanel inputs={inputs} outputs={outputs} activeYearData={activeYearData} onCityRequested={fetchAnchors} onAnchorsChanged={fetchAnchors} />
+                <div className="mt-4">
+                  <InsightsPanel inputs={inputs} outputs={outputs} activeYearData={activeYearData} onCityRequested={fetchAnchors} onAnchorsChanged={fetchAnchors} />
+                </div>
                </div>
               </div>
             </div>
@@ -377,7 +382,8 @@ export function V1Simulator() {
                 </div>
               ) : (
                 <div className="flex flex-col">
-                  <div className="mb-3">
+                  {/* Mobile Chart Controls */}
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-2 mb-3">
                     <select
                       value={chartView}
                       onChange={(e) => setChartView(e.target.value)}
@@ -389,7 +395,9 @@ export function V1Simulator() {
                       <option value="productionMiles">Miles (cumulative)</option>
                     </select>
                   </div>
-                  <div className="h-[360px]">
+                  
+                  {/* Mobile Chart Container */}
+                  <div className="h-[360px] mb-3">
                     <CapitalCurveChart 
                       data={mergedData}
                       chartView={chartView}
@@ -405,7 +413,9 @@ export function V1Simulator() {
               )}
 
               {/* Insights — below active view */}
-              <InsightsPanel inputs={inputs} outputs={outputs} activeYearData={activeYearData} onCityRequested={fetchAnchors} onAnchorsChanged={fetchAnchors} />
+              <div className="mt-4">
+                <InsightsPanel inputs={inputs} outputs={outputs} activeYearData={activeYearData} onCityRequested={fetchAnchors} onAnchorsChanged={fetchAnchors} />
+              </div>
             </div>
 
             {/* Mobile Inputs Drawer */}
