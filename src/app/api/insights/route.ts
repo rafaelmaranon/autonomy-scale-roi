@@ -73,10 +73,12 @@ export async function POST(request: NextRequest) {
     const latency = Date.now() - startTime
 
     if (!openaiRes.ok) {
-      const err = await openaiRes.json().catch(() => ({}))
-      console.error('[insights] OpenAI error:', err)
-      await logAnalytics('insights_message', { action: 'error', latency, error: err.error?.message })
-      return NextResponse.json({ error: 'AI service unavailable' }, { status: 502 })
+      const errBody = await openaiRes.text().catch(() => '')
+      console.error('[insights] OpenAI error:', openaiRes.status, errBody)
+      let detail = `OpenAI ${openaiRes.status}`
+      try { detail = JSON.parse(errBody)?.error?.message || detail } catch {}
+      await logAnalytics('insights_message', { action: 'error', latency, error: detail })
+      return NextResponse.json({ error: detail }, { status: 502 })
     }
 
     const aiData = await openaiRes.json()
@@ -125,9 +127,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ action: parsed })
 
-  } catch (err) {
+  } catch (err: any) {
     console.error('[insights] Server error:', err)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ error: err?.message ?? String(err) }, { status: 500 })
   }
 }
 
