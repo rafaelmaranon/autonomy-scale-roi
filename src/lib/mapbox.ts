@@ -18,7 +18,7 @@ export async function geocodePlace(query: string): Promise<GeocodeResult | null>
   }
 
   const encoded = encodeURIComponent(query.trim())
-  const url = `https://api.geocoding.mapbox.com/v5/mapbox.places/${encoded}.json?access_token=${token}&limit=1`
+  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encoded}.json?access_token=${token}&limit=1`
 
   try {
     const res = await fetch(url)
