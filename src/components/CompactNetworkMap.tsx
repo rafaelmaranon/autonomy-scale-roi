@@ -397,31 +397,31 @@ export function CompactNetworkMap({ inputs, outputs, selectedPreset, yearData, b
       </div>
 
       {/* Legend — always visible, with hover descriptions */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3 mb-4 text-sm">
+      <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 mt-1 mb-2 text-[11px] text-gray-700">
         <div className="relative group flex items-center space-x-1 cursor-pointer">
           <div className="w-2 h-2 rounded-full bg-blue-500" style={{ filter: 'drop-shadow(0 0 2px rgba(59, 130, 246, 0.5))' }} />
-          <span className="text-slate-700 font-medium">Active ({anchoredCities.length})</span>
+          <span>Active ({anchoredCities.length})</span>
           <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-gray-800 text-white text-[10px] rounded shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
             Autonomous public service is live.
           </div>
         </div>
         <div className="relative group flex items-center space-x-1 cursor-pointer">
           <div className="w-2 h-2 rounded-full bg-purple-500" />
-          <span className="text-slate-700 font-medium">Testing ({pilotCities.length})</span>
+          <span>Testing ({pilotCities.length})</span>
           <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-gray-800 text-white text-[10px] rounded shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
             Testing / limited rollout / waitlist / announced.
           </div>
         </div>
         <div className="relative group flex items-center space-x-1 cursor-pointer">
           <div className="w-2 h-2 rounded-full bg-emerald-500" />
-          <span className="text-slate-700 font-medium">Requested ({requestedResolved.length})</span>
+          <span>Requested ({requestedResolved.length})</span>
           <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-gray-800 text-white text-[10px] rounded shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
             Community requested via Insights.
           </div>
         </div>
         <div className="relative group flex items-center space-x-1 cursor-pointer">
           <div className="w-2 h-2 rounded-full bg-gray-400" />
-          <span className="text-slate-700 font-medium">Projected ({projectedProduction.length + projectedValidating.length})</span>
+          <span>Projected ({projectedProduction.length + projectedValidating.length})</span>
           <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-gray-800 text-white text-[10px] rounded shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
             Model forecast (simulation).
           </div>
