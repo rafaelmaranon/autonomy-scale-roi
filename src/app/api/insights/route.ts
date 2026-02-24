@@ -10,7 +10,8 @@ export async function POST(request: NextRequest) {
   const startTime = Date.now()
 
   try {
-    const { message, context } = await request.json()
+    const body = await request.json()
+    const { message, context, session_id, sim_state } = body
 
     if (!message || typeof message !== 'string') {
       return NextResponse.json({ ok: false, error: 'message is required' }, { status: 400 })
@@ -135,6 +136,18 @@ export async function POST(request: NextRequest) {
         success: true,
       })
     } catch {}
+
+    // Log chat event (server-side only)
+    try {
+      await supabaseAdmin.from("chat_events").insert({
+        session_id: session_id ?? crypto.randomUUID(),
+        user_message: message,
+        assistant_message: parsed.action === 'answer' ? parsed.answer_markdown : JSON.stringify(parsed),
+        sim_state: sim_state ?? {}
+      });
+    } catch (e) {
+      console.warn("[insights] chat_events insert failed", e);
+    }
 
     // Canonical response: rename action → type
     const { action: actionType, ...rest } = parsed as any
