@@ -105,6 +105,7 @@ export function CompactNetworkMap({ inputs, outputs, selectedPreset, yearData, b
   const [supportedCities, setSupportedCities] = useState<Set<string>>(new Set())
   const [supportLoading, setSupportLoading] = useState(false)
   const mapRef = useRef<any>(null)
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // Load supported cities from localStorage
   useEffect(() => {
@@ -199,6 +200,11 @@ export function CompactNetworkMap({ inputs, outputs, selectedPreset, yearData, b
 
   const handleMarkerHover = (name: string, status: CityStatus, source: HistoricalAnchorRow | undefined, event: any) => {
     if (tooltipPinned) return
+    // Clear any pending close timer
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current)
+      hoverTimeoutRef.current = null
+    }
     const requestCount = status === 'requested' && source ? (source.value || 1) : undefined
     setTooltip({ name, status, vehicles: inputs.vehiclesPerCity, source, requestCount })
     setTooltipPosition({ x: event.clientX, y: event.clientY })
@@ -206,7 +212,10 @@ export function CompactNetworkMap({ inputs, outputs, selectedPreset, yearData, b
 
   const handleMarkerLeave = () => {
     if (tooltipPinned) return
-    setTooltip(null)
+    // Start close timer - give user time to move to popup
+    hoverTimeoutRef.current = setTimeout(() => {
+      setTooltip(null)
+    }, 300)
   }
 
   // Compute smart tooltip position that stays within viewport
@@ -388,31 +397,31 @@ export function CompactNetworkMap({ inputs, outputs, selectedPreset, yearData, b
       </div>
 
       {/* Legend — always visible, with hover descriptions */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-3 text-sm">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-3 text-sm text-gray-900">
         <div className="relative group flex items-center space-x-1 cursor-pointer">
           <div className="w-2 h-2 rounded-full bg-blue-500" style={{ filter: 'drop-shadow(0 0 2px rgba(59, 130, 246, 0.5))' }} />
-          <span>Active ({anchoredCities.length})</span>
+          <span className="text-gray-900 font-medium">Active ({anchoredCities.length})</span>
           <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-gray-800 text-white text-[10px] rounded shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
             Autonomous public service is live.
           </div>
         </div>
         <div className="relative group flex items-center space-x-1 cursor-pointer">
           <div className="w-2 h-2 rounded-full bg-purple-500" />
-          <span>Testing ({pilotCities.length})</span>
+          <span className="text-gray-900 font-medium">Testing ({pilotCities.length})</span>
           <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-gray-800 text-white text-[10px] rounded shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
             Testing / limited rollout / waitlist / announced.
           </div>
         </div>
         <div className="relative group flex items-center space-x-1 cursor-pointer">
           <div className="w-2 h-2 rounded-full bg-emerald-500" />
-          <span>Requested ({requestedResolved.length})</span>
+          <span className="text-gray-900 font-medium">Requested ({requestedResolved.length})</span>
           <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-gray-800 text-white text-[10px] rounded shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
             Community requested via Insights.
           </div>
         </div>
         <div className="relative group flex items-center space-x-1 cursor-pointer">
           <div className="w-2 h-2 rounded-full bg-gray-400" />
-          <span>Projected ({projectedProduction.length + projectedValidating.length})</span>
+          <span className="text-gray-900 font-medium">Projected ({projectedProduction.length + projectedValidating.length})</span>
           <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-gray-800 text-white text-[10px] rounded shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
             Model forecast (simulation).
           </div>
@@ -427,12 +436,25 @@ export function CompactNetworkMap({ inputs, outputs, selectedPreset, yearData, b
             <div className="fixed inset-0 z-40" onClick={dismissTooltip} />
           )}
           <div
-            className={`fixed bg-white rounded-lg shadow-xl border border-gray-200 p-2 z-50 text-xs ${tooltipPinned ? 'pointer-events-auto' : 'pointer-events-none'}`}
+            className={`fixed bg-white rounded-lg shadow-xl border border-gray-200 p-2 z-50 text-xs ${tooltipPinned ? 'pointer-events-auto' : 'pointer-events-auto'}`}
             style={{
               left: tooltipPosition.x,
               top: tooltipPosition.y,
               transform: 'translateY(-100%)',
               maxWidth: 'min(90vw, 260px)',
+            }}
+            onMouseEnter={() => {
+              // Cancel close timer when entering popup
+              if (hoverTimeoutRef.current) {
+                clearTimeout(hoverTimeoutRef.current)
+                hoverTimeoutRef.current = null
+              }
+            }}
+            onMouseLeave={() => {
+              // Close immediately when leaving popup
+              if (!tooltipPinned) {
+                setTooltip(null)
+              }
             }}
           >
             <div className="min-w-32">

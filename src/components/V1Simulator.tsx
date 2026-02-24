@@ -302,11 +302,11 @@ export function V1Simulator() {
 
                 {/* Chart */}
                 <div className="h-[35vh] min-h-[240px] flex flex-col mt-2">
-                  <div className="flex justify-between items-center mb-1">
+                  <div className="flex justify-between items-center mb-3">
                     <select
                       value={chartView}
                       onChange={(e) => setChartView(e.target.value)}
-                      className="text-xs font-medium text-gray-700 border border-gray-200 rounded px-2 py-1 bg-white cursor-pointer relative z-20 hover:border-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-300"
+                      className="text-xs font-medium text-gray-700 border border-gray-200 rounded px-2 py-1 bg-white cursor-pointer hover:border-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-300"
                     >
                       <option value="netCash">Net cash (cumulative)</option>
                       <option value="paidTrips">Paid trips/week</option>
@@ -377,11 +377,11 @@ export function V1Simulator() {
                 </div>
               ) : (
                 <div className="flex flex-col">
-                  <div className="mb-2">
+                  <div className="mb-3">
                     <select
                       value={chartView}
                       onChange={(e) => setChartView(e.target.value)}
-                      className="text-xs font-medium text-gray-700 border border-gray-200 rounded px-2 py-1 bg-white cursor-pointer relative z-20 hover:border-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-300"
+                      className="text-xs font-medium text-gray-700 border border-gray-200 rounded px-2 py-1 bg-white cursor-pointer hover:border-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-300"
                     >
                       <option value="netCash">Net cash (cumulative)</option>
                       <option value="paidTrips">Paid trips/week</option>
