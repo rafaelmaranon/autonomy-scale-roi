@@ -388,7 +388,7 @@ export function CompactNetworkMap({ inputs, outputs, selectedPreset, yearData, b
       </div>
 
       {/* Legend — always visible, with hover descriptions */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-3 text-sm">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-3 text-xs text-gray-600">
         <div className="relative group flex items-center space-x-1 cursor-pointer">
           <div className="w-2 h-2 rounded-full bg-blue-500" style={{ filter: 'drop-shadow(0 0 2px rgba(59, 130, 246, 0.5))' }} />
           <span>Active ({anchoredCities.length})</span>
