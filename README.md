@@ -1,116 +1,163 @@
 # Autonomy Scale ROI
 
-A strategic simulator that models when large fixed autonomy investments (R&D + platform development) become economically justified through network expansion.
+Autonomy Scale ROI is an interactive simulation + insight tool for modeling how autonomous vehicle networks scale — combining real-world deployment data, unit economics, and conversational AI.
 
-## Overview
+**Live app: [autonomy-scale-roi.vercel.app](https://autonomy-scale-roi.vercel.app)**
 
-This tool helps answer:
-- Given a fixed autonomy investment and target expansion plan, when does the system generate acceptable returns?
-- How fast must expansion occur for break-even?
-- How many cities are required for profitability?
-- What utilization and margin assumptions matter most?
+This project explores a core question:
 
-## Features
+> **What actually determines whether robotaxi networks reach economic break-even?**
 
-- **ROI Calculation Engine**: Models cumulative profit vs fixed investment over time
-- **4 Scenario Presets**: Conservative, Base Case, Aggressive, High Margin
-- **Interactive Charts**: Visualize break-even timing and ROI curves
-- **Ask AI Integration**: Get strategic insights powered by GPT-4
-- **Full Analytics**: Track user behavior and AI interactions via Supabase
-- **Mobile Responsive**: Clean, professional UI optimized for all devices
+---
 
-## Tech Stack
+## What this app does
 
-- **Frontend**: Next.js 14, React, TypeScript, Tailwind CSS
-- **Charts**: Recharts for data visualization
-- **Database**: Supabase for analytics and AI logs
-- **AI**: OpenAI GPT-4 for strategic analysis
-- **Deployment**: Vercel
+### 1. Simulate autonomy scale economics
 
-## Setup Instructions
+Model how changes in:
 
-### 1. Environment Variables
+- Fleet size
+- Cities per year
+- Utilization
+- Cost per mile
+- Ramp timelines
 
-Copy the environment template and fill in your values:
+affect:
 
-```bash
-cp environment-template.txt .env.local
-```
+- Net cash
+- Paid trips
+- Miles driven
+- Break-even trajectory
 
-Required environment variables:
-- `NEXT_PUBLIC_SUPABASE_URL`: Your Supabase project URL
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Your Supabase anonymous key
-- `SUPABASE_SERVICE_ROLE_KEY`: Your Supabase service role key
-- `OPENAI_API_KEY`: Your OpenAI API key
-- `NEXT_PUBLIC_APP_URL`: Your app URL (http://localhost:3000 for local)
+Adjust inputs and immediately see system-level impact.
 
-### 2. Supabase Setup
+---
 
-1. Create a new Supabase project
-2. Run the SQL commands from `supabase-schema.sql` in your Supabase SQL editor
-3. This will create the required tables: `analytics_events` and `ai_logs`
+### 2. Conversational Insights (AI)
 
-### 3. Install Dependencies
+Use the Insights panel to:
 
-```bash
-npm install
-```
+- Ask questions like:
+  - "What drives break-even most?"
+  - "Which input has the biggest leverage?"
 
-### 4. Run Development Server
+The AI responds with structured analysis tied directly to the current scenario.
 
-```bash
-npm run dev
-```
+**Design principle:**
 
-Open [http://localhost:3000](http://localhost:3000) to view the application.
+> AI proposes. The system decides.
 
-## Deployment
+Insights never directly modify the model.
 
-### Deploy to Vercel
+---
 
-1. Push your code to GitHub
-2. Connect your repository to Vercel
-3. Add environment variables in Vercel dashboard
-4. Deploy
+### 3. Community city requests
 
-The app will automatically deploy on every push to main branch.
+Request new cities conversationally:
 
-## Usage
+> "I want Waymo in Boulder"
 
-1. **Select a Preset**: Choose from Conservative, Base Case, Aggressive, or High Margin scenarios
-2. **Adjust Inputs**: Use sliders to modify key parameters like fixed investment, profit per mile, and expansion rate
-3. **Analyze Results**: View break-even timing, ROI projections, and key metrics
-4. **Visualize Data**: Study the cumulative profit vs fixed investment chart
-5. **Ask AI**: Get strategic insights and recommendations based on your scenario
+Flow:
 
-## Key Metrics Tracked
+1. AI detects intent
+2. City is geocoded
+3. User confirms
+4. City appears on the map as **Requested**
 
-- Break-even year
-- ROI at 5 and 10 years
-- Total network miles
-- R&D cost per mile
-- Required cities for 5-year break-even
+This creates lightweight community demand signals.
 
-## Analytics Events
+---
 
-The app tracks comprehensive user behavior:
-- `page_view`, `session_start`
-- `preset_selected`, `input_change`
-- `run_started`, `run_completed`
-- `ai_opened`, `ai_question`, `ai_response`
+### 4. URL → datapoint extraction (pending anchors)
 
-## Model Assumptions
+Paste a news article or blog URL.
 
-- Deterministic scaling model (no randomness)
-- Cities ramp to full production over configurable time period
-- Linear profit per mile across all scenarios
-- Fixed investment amortized across total network miles
-- No external dependencies or market factors
+The system will:
 
-## Contributing
+- Extract candidate metrics (fleet size, trips, vehicles, etc.)
+- Show them for review
+- Allow batch insertion as **Pending**
 
-This is a strategic analysis tool focused on autonomy economics. Contributions should maintain the executive-level focus and analytical rigor.
+Pending datapoints:
+
+- Do **NOT** affect simulations
+- Require approval before becoming historical anchors
+
+This keeps the model grounded while allowing community contribution.
+
+---
+
+## Data governance
+
+Every datapoint includes:
+
+- Source URL
+- Publisher
+- Date
+- Contributor attribution
+- Status (anchored, testing, requested, projected, pending)
+- Confidence
+
+Only **anchored / approved** data influences simulation curves.
+
+This prevents hallucinated AI data from polluting the model.
+
+---
+
+## Tech stack
+
+- **Next.js** (App Router)
+- **TypeScript**
+- **Supabase** (data + analytics)
+- **Mapbox** (geocoding + maps)
+- **OpenAI** (structured insights + extraction)
+- **Recharts** (visualization)
+- **Vercel** (deployment)
+
+**Architecture principle:**
+
+> AI is an interface layer — never the source of truth.
+>
+> All writes are deterministic and validated server-side.
+
+---
+
+## Versioning
+
+**Current release:**
+
+**v0.6.0** — Conversational Insights + Community Map
+
+Establishes:
+
+- Unified Insights entry point
+- City requests
+- URL extraction
+- Historical anchors + simulation blending
+
+Future versions will expand into:
+
+- Autonomy capital cycles
+- Multi-city rollout dynamics
+- ROI horizons
+- Operator tooling
+
+---
+
+## Why this exists
+
+This project explores:
+
+- Physical AI economics
+- Robotaxi scaling constraints
+- Operations-first autonomy strategy
+
+Built by Rafael Marañón.
+
+Feedback welcome from autonomy, robotics, and infrastructure economics practitioners.
+
+---
 
 ## License
 
-Private project - All rights reserved.
+MIT
