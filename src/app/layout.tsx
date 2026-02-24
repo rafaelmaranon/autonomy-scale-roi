@@ -15,6 +15,17 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Autonomy Scale ROI",
   description: "Strategic autonomy expansion simulator",
+  openGraph: {
+    title: "Autonomy Scale ROI",
+    description: "Strategic autonomy expansion simulator",
+    images: ["/og.png"],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Autonomy Scale ROI",
+    description: "Strategic autonomy expansion simulator",
+    images: ["/og.png"],
+  },
 };
 
 export default function RootLayout({
