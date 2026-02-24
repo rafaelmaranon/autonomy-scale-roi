@@ -138,6 +138,22 @@ export function V1Simulator() {
   const activeYearData = mergedData?.[activeYearIndex]
   const activeYear = activeYearData?.year || inputs.startYear + inputs.yearsToSimulate - 1
 
+  // Handle city support (❤️ voting)
+  const handleSupportCity = async (city: string): Promise<{ ok: boolean; count?: number }> => {
+    try {
+      const res = await fetch('/api/city-request/support', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ city }),
+      })
+      const data = await res.json()
+      if (data.ok) fetchAnchors() // Refresh anchors to get updated count
+      return data
+    } catch {
+      return { ok: false }
+    }
+  }
+
   return (
     <div className="min-h-screen bg-white flex flex-col">
       {/* Header */}
@@ -280,6 +296,7 @@ export function V1Simulator() {
                     pendingCities={citySplit.pendingCities}
                     annotatedCities={citySplit.annotatedCities}
                     requestedCities={citySplit.requestedCities}
+                    onSupportCity={handleSupportCity}
                   />
                 </div>
 
@@ -355,6 +372,7 @@ export function V1Simulator() {
                     pendingCities={citySplit.pendingCities}
                     annotatedCities={citySplit.annotatedCities}
                     requestedCities={citySplit.requestedCities}
+                    onSupportCity={handleSupportCity}
                   />
                 </div>
               ) : (

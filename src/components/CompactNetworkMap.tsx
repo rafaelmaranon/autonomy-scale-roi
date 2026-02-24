@@ -18,6 +18,7 @@ interface CompactNetworkMapProps {
   requestedCities?: HistoricalAnchorRow[]
   onHover?: (yearIndex: number) => void
   onMouseLeave?: () => void
+  onSupportCity?: (city: string) => Promise<{ ok: boolean; count?: number }>
 }
 
 interface ResolvedCity {
@@ -44,6 +45,7 @@ interface TooltipData {
   status: CityStatus
   vehicles?: number
   source?: HistoricalAnchorRow
+  requestCount?: number
 }
 
 const STATUS_COLORS: Record<CityStatus, string> = {
@@ -92,7 +94,7 @@ function resolveAnchors(rows: HistoricalAnchorRow[], currentYear: number): Resol
   return [...byName.values()]
 }
 
-export function CompactNetworkMap({ inputs, outputs, selectedPreset, yearData, bindingCities = [], pendingCities = [], annotatedCities = [], requestedCities = [], onHover, onMouseLeave }: CompactNetworkMapProps) {
+export function CompactNetworkMap({ inputs, outputs, selectedPreset, yearData, bindingCities = [], pendingCities = [], annotatedCities = [], requestedCities = [], onHover, onMouseLeave, onSupportCity }: CompactNetworkMapProps) {
   const [tooltip, setTooltip] = useState<TooltipData | null>(null)
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 })
   const [tooltipPinned, setTooltipPinned] = useState(false)
@@ -100,7 +102,17 @@ export function CompactNetworkMap({ inputs, outputs, selectedPreset, yearData, b
   const [center, setCenter] = useState<[number, number]>([0, 0])
   const [showDebug, setShowDebug] = useState(false)
   const [isTouch, setIsTouch] = useState(false)
+  const [supportedCities, setSupportedCities] = useState<Set<string>>(new Set())
+  const [supportLoading, setSupportLoading] = useState(false)
   const mapRef = useRef<any>(null)
+
+  // Load supported cities from localStorage
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('supported_cities')
+      if (stored) setSupportedCities(new Set(JSON.parse(stored)))
+    } catch {}
+  }, [])
 
   useEffect(() => {
     const mq = window.matchMedia('(pointer: coarse)')
@@ -187,7 +199,8 @@ export function CompactNetworkMap({ inputs, outputs, selectedPreset, yearData, b
 
   const handleMarkerHover = (name: string, status: CityStatus, source: HistoricalAnchorRow | undefined, event: any) => {
     if (tooltipPinned) return
-    setTooltip({ name, status, vehicles: inputs.vehiclesPerCity, source })
+    const requestCount = status === 'requested' && source ? (source.value || 1) : undefined
+    setTooltip({ name, status, vehicles: inputs.vehiclesPerCity, source, requestCount })
     setTooltipPosition({ x: event.clientX, y: event.clientY })
   }
 
@@ -213,7 +226,8 @@ export function CompactNetworkMap({ inputs, outputs, selectedPreset, yearData, b
   const handleMarkerClick = (name: string, status: CityStatus, source?: HistoricalAnchorRow, event?: any) => {
     if (isTouch) {
       // Mobile: tap → show sticky tooltip, do NOT navigate
-      setTooltip({ name, status, vehicles: inputs.vehiclesPerCity, source })
+      const requestCount = status === 'requested' && source ? (source.value || 1) : undefined
+      setTooltip({ name, status, vehicles: inputs.vehiclesPerCity, source, requestCount })
       if (event) setTooltipPosition(computeTooltipPosition(event.clientX ?? event.pageX, event.clientY ?? event.pageY))
       setTooltipPinned(true)
     } else {
@@ -221,6 +235,27 @@ export function CompactNetworkMap({ inputs, outputs, selectedPreset, yearData, b
       if (source?.source_url) {
         window.open(source.source_url, '_blank', 'noopener,noreferrer')
       }
+    }
+  }
+
+  const handleSupportCity = async (cityName: string) => {
+    if (!onSupportCity || supportLoading || supportedCities.has(cityName.toLowerCase())) return
+    setSupportLoading(true)
+    try {
+      const result = await onSupportCity(cityName)
+      if (result.ok) {
+        const key = cityName.toLowerCase()
+        const updated = new Set(supportedCities)
+        updated.add(key)
+        setSupportedCities(updated)
+        localStorage.setItem('supported_cities', JSON.stringify([...updated]))
+        // Update tooltip count
+        if (tooltip && tooltip.name.toLowerCase() === key) {
+          setTooltip({ ...tooltip, requestCount: result.count })
+        }
+      }
+    } catch {} finally {
+      setSupportLoading(false)
     }
   }
 
@@ -311,34 +346,41 @@ export function CompactNetworkMap({ inputs, outputs, selectedPreset, yearData, b
               >
                 {(() => {
                   const s = Math.max(0.5, 1 / Math.sqrt(zoom))
+                  // All markers: invisible hitbox + filled circle + white border
+                  const hitR = 12 * s
                   if (c.status === 'anchored') return (
                     <g>
-                      <circle r={7 * s} fill="#3b82f6" opacity={0.25} style={{ filter: 'blur(1px)' }} />
-                      <circle r={4 * s} fill="#3b82f6" stroke="white" strokeWidth={1.5 * s} className="cursor-pointer" />
+                      <circle r={hitR} fill="transparent" className="cursor-pointer" />
+                      <circle r={8 * s} fill="#3b82f6" opacity={0.2} style={{ filter: 'blur(2px)' }} />
+                      <circle r={5 * s} fill="#3b82f6" stroke="white" strokeWidth={2 * s} className="cursor-pointer" style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.15))' }} />
                     </g>
                   )
                   if (c.status === 'pilot') return (
-                    <circle r={4 * s} fill="none" stroke="#8b5cf6" strokeWidth={1.5 * s} className="cursor-pointer" />
+                    <g>
+                      <circle r={hitR} fill="transparent" className="cursor-pointer" />
+                      <circle r={4.5 * s} fill="#8b5cf6" stroke="white" strokeWidth={1.5 * s} className="cursor-pointer" style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.15))' }} />
+                    </g>
                   )
                   if (c.status === 'requested') return (
                     <g>
-                      {/* Invisible larger hit target for mobile tapping */}
-                      <circle r={12 * s} fill="transparent" className="cursor-pointer" />
-                      <circle r={4.5 * s} fill="#10b981" opacity={0.15} />
-                      <circle r={4 * s} fill="none" stroke="#10b981" strokeWidth={1.8 * s} className="cursor-pointer" />
+                      <circle r={hitR} fill="transparent" className="cursor-pointer" />
+                      <circle r={4.5 * s} fill="#10b981" stroke="white" strokeWidth={1.5 * s} className="cursor-pointer" style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.15))' }} />
                     </g>
                   )
                   if (c.status === 'production') return (
                     <g>
-                      <circle r={5 * s} fill="#94a3b8" opacity={0.2} style={{ filter: 'blur(1px)' }} />
-                      <circle r={2.5 * s} fill="#94a3b8" className="cursor-pointer" />
+                      <circle r={10 * s} fill="transparent" className="cursor-pointer" />
+                      <circle r={3 * s} fill="#94a3b8" stroke="white" strokeWidth={1 * s} className="cursor-pointer" style={{ filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.1))' }} />
+                    </g>
+                  )
+                  if (c.status === 'validating') return (
+                    <g>
+                      <circle r={10 * s} fill="transparent" className="cursor-pointer" />
+                      <circle r={2.5 * s} fill="#cbd5e1" stroke="white" strokeWidth={1 * s} className="cursor-pointer" />
                     </g>
                   )
                   return null
                 })()}
-                {c.status === 'validating' && (
-                  <circle r={2} fill="#cbd5e1" className="cursor-pointer" />
-                )}
               </Marker>
             ))}
           </ZoomableGroup>
@@ -355,14 +397,14 @@ export function CompactNetworkMap({ inputs, outputs, selectedPreset, yearData, b
           </div>
         </div>
         <div className="relative group flex items-center space-x-1 cursor-pointer">
-          <div className="w-2 h-2 rounded-full border border-purple-500" />
+          <div className="w-2 h-2 rounded-full bg-purple-500" />
           <span>Testing ({pilotCities.length})</span>
           <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-gray-800 text-white text-[10px] rounded shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
             Testing / limited rollout / waitlist / announced.
           </div>
         </div>
         <div className="relative group flex items-center space-x-1 cursor-pointer">
-          <div className="w-2 h-2 rounded-full border border-emerald-500" style={{ backgroundColor: 'rgba(16, 185, 129, 0.15)' }} />
+          <div className="w-2 h-2 rounded-full bg-emerald-500" />
           <span>Requested ({requestedResolved.length})</span>
           <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-gray-800 text-white text-[10px] rounded shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
             Community requested via Insights.
@@ -399,10 +441,28 @@ export function CompactNetworkMap({ inputs, outputs, selectedPreset, yearData, b
                 <div className="flex justify-between gap-4">
                   <span className="text-gray-600">Status:</span>
                   <span className="font-medium" style={{ color: STATUS_COLORS[tooltip.status] }}>
-                    {STATUS_LABELS[tooltip.status]}{tooltip.status === 'requested' && ' (+1)'}
+                    {STATUS_LABELS[tooltip.status]}
                   </span>
                 </div>
-                {tooltip.source && (
+                {/* ❤️ Support section for requested cities */}
+                {tooltip.status === 'requested' && (
+                  <>
+                    <div className="flex justify-between gap-4">
+                      <span className="text-gray-600">❤️ Supporters:</span>
+                      <span className="font-medium text-gray-900">{tooltip.requestCount || 1}</span>
+                    </div>
+                    {tooltipPinned && onSupportCity && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleSupportCity(tooltip.name) }}
+                        disabled={supportLoading || supportedCities.has(tooltip.name.toLowerCase())}
+                        className="mt-1.5 flex items-center justify-center gap-1 px-2 py-1.5 w-full rounded text-[11px] font-medium transition-colors disabled:opacity-60 disabled:cursor-default bg-emerald-500 text-white hover:bg-emerald-600 active:bg-emerald-700"
+                      >
+                        {supportedCities.has(tooltip.name.toLowerCase()) ? '✓ You supported this' : supportLoading ? 'Adding...' : 'Add your support ❤️'}
+                      </button>
+                    )}
+                  </>
+                )}
+                {tooltip.source && tooltip.status !== 'requested' && (
                   <>
                     {(tooltip.source.source_title || tooltip.source.source_publisher) && (
                       <div className="flex justify-between gap-4">

@@ -37,7 +37,6 @@ interface ChatMessage {
 
 const INSIGHT_CHIPS = [
   "What drives break-even most?",
-  "Which input has the biggest leverage?",
   "I want Waymo in my city",
 ]
 
