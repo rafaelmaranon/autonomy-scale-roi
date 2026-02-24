@@ -459,10 +459,10 @@ export function V1Simulator() {
           <div className="relative bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
             <h2 className="text-lg font-bold text-gray-900 mb-4">Disclaimer</h2>
             <div className="space-y-3 text-sm text-gray-700 leading-relaxed">
-              <p>Independent analytical project. Not affiliated with Waymo, Zoox, Tesla or any company.</p>
+              <p>Independent analytical project. Not affiliated with Waymo, Tesla or any company.</p>
               <p>All projections are illustrative simulations based on public information and user inputs.</p>
               <p>Community-submitted datapoints are added as Pending and do not affect results until reviewed.</p>
-              <p>Built by Rafael Marañón.</p>
+
             </div>
             <button
               onClick={() => setShowDisclaimer(false)}
