@@ -28,10 +28,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: false, error: 'Geocoding service unavailable (token not configured)' }, { status: 500 })
     }
 
-    // Geocode
-    const geo = await geocodePlace(trimmed)
-    if (!geo) {
-      return NextResponse.json({ ok: false, error: `No match found for "${trimmed}". Try a more specific city name.` }, { status: 404 })
+    // Geocode with enhanced error handling
+    let geo
+    try {
+      geo = await geocodePlace(trimmed)
+      if (!geo) {
+        return NextResponse.json({ ok: false, error: `No match found for "${trimmed}". Try a more specific city name.` }, { status: 404 })
+      }
+    } catch (err: any) {
+      console.error('[city-request/preview] Geocoding failed:', err)
+      return NextResponse.json({ 
+        ok: false, 
+        error: 'Geocoding service temporarily unavailable. Please try again.',
+        debug: err.message 
+      }, { status: 503 })
     }
 
     // Check for existing request (duplicate)
