@@ -22,6 +22,8 @@ export interface SimYearData {
   vehiclesValidation: number
   productionMiles: number
   validationMiles: number
+  cumulativeProductionMiles: number
+  cumulativeTotalMiles: number
   productionTrips: number
   paidTripsPerWeek: number
   annualRDSpend: number

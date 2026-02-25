@@ -112,6 +112,10 @@ export class SimCalculator {
     const annualRDSpend = inputs.annualRDSpend * rdMultiplier
     const cumulativeRDSpend = (previousData[previousData.length - 1]?.cumulativeRDSpend || 0) + annualRDSpend
     
+    // Cumulative miles
+    const cumulativeProductionMiles = (previousData[previousData.length - 1]?.cumulativeProductionMiles || 0) + productionMiles
+    const cumulativeTotalMiles = (previousData[previousData.length - 1]?.cumulativeTotalMiles || 0) + productionMiles + validationMiles
+    
     // Net cash flow (can go negative for years)
     const netCashFlow = operatingProfit - (annualRDSpend * 1e9) // Convert R&D to dollars
     const cumulativeNetCash = (previousData[previousData.length - 1]?.cumulativeNetCash || 0) + netCashFlow
@@ -128,6 +132,8 @@ export class SimCalculator {
       vehiclesValidation: Math.round(vehiclesValidation),
       productionMiles,
       validationMiles,
+      cumulativeProductionMiles,
+      cumulativeTotalMiles,
       productionTrips,
       paidTripsPerWeek,
       annualRDSpend,

@@ -101,10 +101,10 @@ export function CapitalCurveChart({ data, chartView = 'netCash', activeIndex, bi
         }
       case 'productionMiles':
         return { 
-          dataKey: 'productionMiles', 
+          dataKey: 'cumulativeProductionMiles', 
           color: '#8b5cf6',
-          unit: 'miles/year',
-          formatValue: (value: number) => `${formatSmartNumber(value)} miles/year`,
+          unit: 'miles (cum.)',
+          formatValue: (value: number) => `${formatSmartNumber(value)} miles (cum.)`,
           yAxisDomain: [0, 'dataMax']
         }
       case 'validationMiles':

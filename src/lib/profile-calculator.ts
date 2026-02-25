@@ -109,6 +109,10 @@ export class ProfileCalculator {
     const annualRDSpend = inputs.annualRDSpend * rdMultiplier
     const cumulativeRDSpend = (previousData_?.cumulativeRDSpend || 0) + annualRDSpend
     
+    // Cumulative miles
+    const cumulativeProductionMiles = (previousData_?.cumulativeProductionMiles || 0) + productionMiles
+    const cumulativeTotalMiles = (previousData_?.cumulativeTotalMiles || 0) + productionMiles + validationMiles
+    
     // Net cash flow
     const netCashFlow = operatingProfit - (annualRDSpend * 1e9) // Convert R&D to dollars
     const cumulativeNetCash = (previousData_?.cumulativeNetCash || 0) + netCashFlow
@@ -125,6 +129,8 @@ export class ProfileCalculator {
       vehiclesValidation: Math.round(vehiclesValidation),
       productionMiles,
       validationMiles,
+      cumulativeProductionMiles,
+      cumulativeTotalMiles,
       productionTrips,
       paidTripsPerWeek,
       annualRDSpend,

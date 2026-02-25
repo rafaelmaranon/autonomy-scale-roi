@@ -210,7 +210,7 @@ export function V1Simulator() {
                     <div className="text-[11px] text-gray-400">Fleet size</div>
                   </div>
                   <div className="flex-shrink-0">
-                    <div className="text-sm font-bold text-gray-900">{((activeYearData.productionMiles + activeYearData.validationMiles) / 1e9).toFixed(1)}B</div>
+                    <div className="text-sm font-bold text-gray-900">{(activeYearData.cumulativeTotalMiles / 1e9).toFixed(1)}B</div>
                     <div className="text-[11px] text-gray-400">Miles (cum.)</div>
                   </div>
                 </div>

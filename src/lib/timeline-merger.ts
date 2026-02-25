@@ -40,7 +40,7 @@ export const METRIC_REGISTRY: MetricRegistryEntry[] = [
   { metricKey: 'paid_trips_per_week',        simField: 'paidTripsPerWeek',    views: ['paidTrips'],                    binding: true },
   { metricKey: 'fleet_size',                 simField: 'vehiclesProduction',  views: ['fleetSize'],                    binding: true },
   { metricKey: 'vehicles_in_city',           simField: 'vehiclesProduction',  views: ['fleetSize'],                    binding: true },
-  { metricKey: 'cumulative_miles',           simField: 'productionMiles',     views: ['productionMiles', 'validationMiles'], binding: true },
+  { metricKey: 'cumulative_miles',           simField: 'cumulativeProductionMiles', views: ['productionMiles'], binding: true },
   { metricKey: 'production_miles_per_year',  simField: 'productionMiles',     views: ['productionMiles'],              binding: true },
   { metricKey: 'cumulative_rides',           simField: 'productionTrips',     views: [],                               binding: true },
   { metricKey: 'cumulative_net_cash',        simField: 'cumulativeNetCash',   views: ['netCash'],                      binding: true },
