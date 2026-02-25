@@ -34,6 +34,19 @@ export interface SimYearData {
   roi: number
 }
 
+// Projection inputs for 3-constraint S-curve (separate from sim engine)
+export interface ProjectionInputs {
+  earlyGrowthCAGR: number      // e.g., 1.58 = 158%
+  targetMarketShare: number    // e.g., 0.35 = 35%
+  globalTAM: number            // trips/week, e.g., 230_000_000
+}
+
+export const defaultProjectionInputs: ProjectionInputs = {
+  earlyGrowthCAGR: 1.58,       // Auto-calculated from anchors, ~158% default
+  targetMarketShare: 0.35,     // 35% market share
+  globalTAM: 230_000_000,      // 230M trips/week global ride-hailing
+}
+
 // Simulation outputs
 export interface SimOutputs {
   yearlyData: SimYearData[]
@@ -60,7 +73,7 @@ export const waymoProfile: ProfileConfig = {
   description: 'Deep R&D → Infrastructure',
   inputs: {
     startYear: 2004,
-    yearsToSimulate: 37, // 2004-2040
+    yearsToSimulate: 47, // 2004-2050
     citiesPerYear: 10, // Expansion rate for city launches
     vehiclesPerCity: 1500, // Conservative fleet size
     profitPerMile: 0.50, // Lower margin initially
@@ -82,7 +95,7 @@ export const teslaProfile: ProfileConfig = {
   description: 'Software Leverage',
   inputs: {
     startYear: 2025,
-    yearsToSimulate: 16, // 2025-2040
+    yearsToSimulate: 26, // 2025-2050
     citiesPerYear: 20,
     vehiclesPerCity: 5000, // Higher density through enablement
     profitPerMile: 1.20, // Higher margins through software leverage
@@ -104,7 +117,7 @@ export const customProfile: ProfileConfig = {
   description: 'User-defined',
   inputs: {
     startYear: 2025,
-    yearsToSimulate: 25,
+    yearsToSimulate: 26, // 2025-2050
     citiesPerYear: 10,
     vehiclesPerCity: 3000,
     profitPerMile: 0.80,

@@ -1,4 +1,4 @@
-import { SimYearData } from './sim-types'
+import { SimYearData, ProjectionInputs } from './sim-types'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -123,7 +123,8 @@ export interface MergedYearData extends SimYearData {
  */
 export function mergeTimeline(
   simData: SimYearData[],
-  bindingAnchors: HistoricalAnchorRow[]
+  bindingAnchors: HistoricalAnchorRow[],
+  projection?: ProjectionInputs
 ): MergedYearData[] {
   const merged: MergedYearData[] = simData.map(d => ({
     ...d,
@@ -157,16 +158,45 @@ export function mergeTimeline(
     const lastAnchorYear = anchorYears[anchorYears.length - 1]
     const firstAnchorYear = anchorYears[0]
 
-    // Rebase: project simulation growth from last anchor value, not raw sim values
+    // Projection setup
     const lastAnchorValue = byYear.get(lastAnchorYear)!
     const simAtLastAnchor = merged.find(p => p.year === lastAnchorYear)
     const simValueAtAnchor = simAtLastAnchor ? (simAtLastAnchor as any)[simField] as number : 0
     const rebaseFactor = simValueAtAnchor > 0 ? lastAnchorValue / simValueAtAnchor : 1
 
+    // Use user-provided CAGR if available, otherwise calculate from anchors
+    let cagr: number | null = projection?.earlyGrowthCAGR ?? null
+    if (cagr === null && anchorYears.length >= 2) {
+      const prevYear = anchorYears[anchorYears.length - 2]
+      const prevValue = byYear.get(prevYear)!
+      if (prevValue > 0 && lastAnchorValue > prevValue) {
+        const span = lastAnchorYear - prevYear
+        cagr = Math.pow(lastAnchorValue / prevValue, 1 / span) - 1
+      }
+    }
+
+    // TAM ceiling (only for paidTripsPerWeek)
+    const tamCeiling = (projection && simField === 'paidTripsPerWeek')
+      ? projection.globalTAM * projection.targetMarketShare
+      : Infinity
+
     for (const point of merged) {
       if (point.year > lastAnchorYear) {
+        // Phase 1: CAGR exponential growth
+        const t = point.year - lastAnchorYear
+        const cagrProjection = (cagr !== null && cagr > 0)
+          ? lastAnchorValue * Math.pow(1 + cagr, t)
+          : Infinity
+
+        // Phase 2: Capacity constraint (rebased simulation)
         const rawSimValue = (point as any)[simField] as number
-        ;(point as any)[simField] = Math.round(rawSimValue * rebaseFactor)
+        const capacityProjection = rawSimValue * rebaseFactor
+
+        // Phase 3: TAM saturation
+        // Final value = min of all three constraints
+        const projected = Math.min(cagrProjection, capacityProjection, tamCeiling)
+        ;(point as any)[simField] = Math.round(projected === Infinity ? capacityProjection : projected)
+
         point._sources[simField] = 'simulated'
         continue
       }

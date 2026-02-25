@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { ChevronDown, SlidersHorizontal, X, ExternalLink } from 'lucide-react'
-import { SimInputs, SimOutputs, SimYearData, ProfileConfig, profiles, getProfileByName } from '@/lib/sim-types'
+import { SimInputs, SimOutputs, SimYearData, ProfileConfig, profiles, getProfileByName, ProjectionInputs, defaultProjectionInputs } from '@/lib/sim-types'
 import { SimCalculator } from '@/lib/sim-calculator'
 import { analytics } from '@/lib/analytics'
 import { CapitalCurveChart } from './CapitalCurveChart'
@@ -14,12 +14,13 @@ export function V1Simulator() {
   const [inputs, setInputs] = useState<SimInputs>(profiles[0].inputs) // Start with Waymo
   const [outputs, setOutputs] = useState<SimOutputs | null>(null)
   const [selectedProfile, setSelectedProfile] = useState<string>('Waymo')
-  const [activeYearIndex, setActiveYearIndex] = useState<number>(45) // Default to final year
+  const [activeYearIndex, setActiveYearIndex] = useState<number>(profiles[0].inputs.yearsToSimulate - 1) // Default to final year
   const [chartView, setChartView] = useState<string>('netCash')
   const [activeView, setActiveView] = useState<'map' | 'chart'>('map')
   const [showInputsDrawer, setShowInputsDrawer] = useState<boolean>(false)
   const [showDisclaimer, setShowDisclaimer] = useState<boolean>(false)
   const [anchors, setAnchors] = useState<HistoricalAnchorRow[]>([])
+  const [projectionInputs, setProjectionInputs] = useState<ProjectionInputs>(defaultProjectionInputs)
 
   const fetchAnchors = () => {
     fetch('/api/anchors?company=Waymo', { cache: 'no-store' })
@@ -128,11 +129,24 @@ export function V1Simulator() {
     requestedCities: anchors.filter(a => a.metric === 'city_requested'),
   }), [anchorSplit, anchors])
 
+  // Auto-calculate CAGR from paid_trips_per_week anchors
+  const autoCAGR = useMemo(() => {
+    const tripAnchors = anchorSplit.bindingAnchors
+      .filter(a => a.metric === 'paid_trips_per_week' && Number(a.value) > 0)
+      .sort((a, b) => a.year - b.year)
+    if (tripAnchors.length < 2) return null
+    const first = tripAnchors[tripAnchors.length - 2]
+    const last = tripAnchors[tripAnchors.length - 1]
+    const span = last.year - first.year
+    if (span <= 0 || Number(first.value) <= 0) return null
+    return Math.pow(Number(last.value) / Number(first.value), 1 / span) - 1
+  }, [anchorSplit.bindingAnchors])
+
   // Merge simulation data with BINDING anchors only
   const mergedData = useMemo(() => {
     if (!outputs) return null
-    return mergeTimeline(outputs.yearlyData, anchorSplit.bindingAnchors)
-  }, [outputs, anchorSplit.bindingAnchors])
+    return mergeTimeline(outputs.yearlyData, anchorSplit.bindingAnchors, projectionInputs)
+  }, [outputs, anchorSplit.bindingAnchors, projectionInputs])
 
   // Get active year data for display (from merged timeline)
   const activeYearData = mergedData?.[activeYearIndex]
@@ -257,6 +271,42 @@ export function V1Simulator() {
                     </div>
                     <input type="range" min={0.10} max={2.00} step={0.05} value={inputs.profitPerMile}
                       onChange={(e) => handleInputChange('profitPerMile', parseFloat(e.target.value))}
+                      className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer" />
+                  </div>
+                </div>
+
+                {/* Divider */}
+                <div className="border-t border-gray-200 my-4" />
+
+                {/* Market & Growth Section */}
+                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Market & Growth</h3>
+                <div className="space-y-5">
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="text-xs font-medium text-gray-700">Early Growth CAGR</label>
+                      <span className="text-sm font-bold text-gray-900">{(projectionInputs.earlyGrowthCAGR * 100).toFixed(0)}%</span>
+                    </div>
+                    <input type="range" min={10} max={300} step={5} value={Math.round(projectionInputs.earlyGrowthCAGR * 100)}
+                      onChange={(e) => setProjectionInputs(prev => ({ ...prev, earlyGrowthCAGR: parseInt(e.target.value) / 100 }))}
+                      className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer" />
+                    {autoCAGR && <div className="text-[10px] text-gray-400 mt-0.5">Historical: {(autoCAGR * 100).toFixed(0)}%</div>}
+                  </div>
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="text-xs font-medium text-gray-700">Target Market Share</label>
+                      <span className="text-sm font-bold text-gray-900">{(projectionInputs.targetMarketShare * 100).toFixed(0)}%</span>
+                    </div>
+                    <input type="range" min={5} max={100} step={5} value={Math.round(projectionInputs.targetMarketShare * 100)}
+                      onChange={(e) => setProjectionInputs(prev => ({ ...prev, targetMarketShare: parseInt(e.target.value) / 100 }))}
+                      className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer" />
+                  </div>
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="text-xs font-medium text-gray-700">Global TAM</label>
+                      <span className="text-sm font-bold text-gray-900">{(projectionInputs.globalTAM / 1e6).toFixed(0)}M/wk</span>
+                    </div>
+                    <input type="range" min={50} max={2000} step={10} value={Math.round(projectionInputs.globalTAM / 1e6)}
+                      onChange={(e) => setProjectionInputs(prev => ({ ...prev, globalTAM: parseInt(e.target.value) * 1e6 }))}
                       className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer" />
                   </div>
                 </div>
@@ -464,6 +514,42 @@ export function V1Simulator() {
                       </div>
                       <input type="range" min={0.10} max={2.00} step={0.05} value={inputs.profitPerMile}
                         onChange={(e) => handleInputChange('profitPerMile', parseFloat(e.target.value))}
+                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" />
+                    </div>
+                  </div>
+
+                  {/* Divider */}
+                  <div className="border-t border-gray-200 my-5" />
+
+                  {/* Market & Growth Section */}
+                  <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Market & Growth</h3>
+                  <div className="space-y-5">
+                    <div>
+                      <div className="flex justify-between items-center mb-2">
+                        <label className="text-sm font-medium text-gray-700">Early Growth CAGR</label>
+                        <span className="text-sm font-bold text-gray-900">{(projectionInputs.earlyGrowthCAGR * 100).toFixed(0)}%</span>
+                      </div>
+                      <input type="range" min={10} max={300} step={5} value={Math.round(projectionInputs.earlyGrowthCAGR * 100)}
+                        onChange={(e) => setProjectionInputs(prev => ({ ...prev, earlyGrowthCAGR: parseInt(e.target.value) / 100 }))}
+                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" />
+                      {autoCAGR && <div className="text-[10px] text-gray-400 mt-0.5">Historical: {(autoCAGR * 100).toFixed(0)}%</div>}
+                    </div>
+                    <div>
+                      <div className="flex justify-between items-center mb-2">
+                        <label className="text-sm font-medium text-gray-700">Target Market Share</label>
+                        <span className="text-sm font-bold text-gray-900">{(projectionInputs.targetMarketShare * 100).toFixed(0)}%</span>
+                      </div>
+                      <input type="range" min={5} max={100} step={5} value={Math.round(projectionInputs.targetMarketShare * 100)}
+                        onChange={(e) => setProjectionInputs(prev => ({ ...prev, targetMarketShare: parseInt(e.target.value) / 100 }))}
+                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" />
+                    </div>
+                    <div>
+                      <div className="flex justify-between items-center mb-2">
+                        <label className="text-sm font-medium text-gray-700">Global TAM</label>
+                        <span className="text-sm font-bold text-gray-900">{(projectionInputs.globalTAM / 1e6).toFixed(0)}M/wk</span>
+                      </div>
+                      <input type="range" min={50} max={2000} step={10} value={Math.round(projectionInputs.globalTAM / 1e6)}
+                        onChange={(e) => setProjectionInputs(prev => ({ ...prev, globalTAM: parseInt(e.target.value) * 1e6 }))}
                         className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" />
                     </div>
                   </div>
