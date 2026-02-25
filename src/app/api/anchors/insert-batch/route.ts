@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { geocodePlace } from '@/lib/mapbox'
 
 export const dynamic = 'force-dynamic'
 
@@ -26,6 +27,15 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ ok: false, error: `Candidate ${i}: missing ${field}` }, { status: 400 })
         }
       }
+      // Auto-geocode if row has a city and no coords in metadata
+      let metadata = c.metadata || (c.evidence_quote ? { evidence_quote: c.evidence_quote } : null)
+      if (c.city && !(metadata?.lat != null && metadata?.lon != null)) {
+        const geo = await geocodePlace(c.city)
+        if (geo) {
+          metadata = { ...metadata, lat: geo.lat, lon: geo.lon, place_name: geo.place_name, country: geo.country, region: geo.region }
+        }
+      }
+
       rows.push({
         company: c.company,
         metric: c.metric,
@@ -40,7 +50,7 @@ export async function POST(request: NextRequest) {
         source_publisher: c.source_publisher || null,
         source_date: c.source_date || null,
         source_url: c.source_url || null,
-        metadata: c.evidence_quote ? { evidence_quote: c.evidence_quote } : null,
+        metadata,
       })
     }
 

@@ -139,14 +139,14 @@ export function findCityByName(name: string): City | null {
   return WORLD_CITIES.find(c => c.name.toLowerCase() === normalized) || null
 }
 
-// Resolve coordinates for an anchor row: try city name match, then metadata fallback
+// Resolve coordinates for an anchor row: prefer metadata (Mapbox-geocoded), fallback to WORLD_CITIES
 export function resolveCityCoords(
   cityName: string,
   metadata?: { lat?: number; lon?: number } | null
 ): { lat: number; lon: number } | null {
+  if (metadata?.lat != null && metadata?.lon != null) return { lat: metadata.lat, lon: metadata.lon }
   const match = findCityByName(cityName)
   if (match) return { lat: match.lat, lon: match.lon }
-  if (metadata?.lat != null && metadata?.lon != null) return { lat: metadata.lat, lon: metadata.lon }
   return null
 }
 
