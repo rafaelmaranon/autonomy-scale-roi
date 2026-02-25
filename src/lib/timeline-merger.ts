@@ -164,9 +164,11 @@ export function mergeTimeline(
     const simValueAtAnchor = simAtLastAnchor ? (simAtLastAnchor as any)[simField] as number : 0
     const rebaseFactor = simValueAtAnchor > 0 ? lastAnchorValue / simValueAtAnchor : 1
 
-    // Use user-provided CAGR if available, otherwise calculate from anchors
-    let cagr: number | null = projection?.earlyGrowthCAGR ?? null
-    if (cagr === null && anchorYears.length >= 2) {
+    // User CAGR slider only controls paidTripsPerWeek; other metrics derive CAGR from their own anchors
+    let cagr: number | null = null
+    if (projection && simField === 'paidTripsPerWeek') {
+      cagr = projection.earlyGrowthCAGR
+    } else if (anchorYears.length >= 2) {
       const prevYear = anchorYears[anchorYears.length - 2]
       const prevValue = byYear.get(prevYear)!
       if (prevValue > 0 && lastAnchorValue > prevValue) {
