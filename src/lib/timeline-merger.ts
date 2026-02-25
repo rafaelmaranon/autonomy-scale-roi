@@ -182,21 +182,20 @@ export function mergeTimeline(
 
     for (const point of merged) {
       if (point.year > lastAnchorYear) {
-        // Phase 1: CAGR exponential growth
         const t = point.year - lastAnchorYear
-        const cagrProjection = (cagr !== null && cagr > 0)
-          ? lastAnchorValue * Math.pow(1 + cagr, t)
-          : Infinity
+        let projected: number
 
-        // Phase 2: Capacity constraint (rebased simulation)
-        const rawSimValue = (point as any)[simField] as number
-        const capacityProjection = rawSimValue * rebaseFactor
+        if (cagr !== null && cagr > 0) {
+          // CAGR-driven projection capped by TAM ceiling
+          const cagrValue = lastAnchorValue * Math.pow(1 + cagr, t)
+          projected = Math.min(cagrValue, tamCeiling)
+        } else {
+          // Fallback: rebased simulation growth (for metrics without CAGR data)
+          const rawSimValue = (point as any)[simField] as number
+          projected = rawSimValue * rebaseFactor
+        }
 
-        // Phase 3: TAM saturation
-        // Final value = min of all three constraints
-        const projected = Math.min(cagrProjection, capacityProjection, tamCeiling)
-        ;(point as any)[simField] = Math.round(projected === Infinity ? capacityProjection : projected)
-
+        ;(point as any)[simField] = Math.round(projected)
         point._sources[simField] = 'simulated'
         continue
       }
