@@ -157,8 +157,16 @@ export function mergeTimeline(
     const lastAnchorYear = anchorYears[anchorYears.length - 1]
     const firstAnchorYear = anchorYears[0]
 
+    // Rebase: project simulation growth from last anchor value, not raw sim values
+    const lastAnchorValue = byYear.get(lastAnchorYear)!
+    const simAtLastAnchor = merged.find(p => p.year === lastAnchorYear)
+    const simValueAtAnchor = simAtLastAnchor ? (simAtLastAnchor as any)[simField] as number : 0
+    const rebaseFactor = simValueAtAnchor > 0 ? lastAnchorValue / simValueAtAnchor : 1
+
     for (const point of merged) {
       if (point.year > lastAnchorYear) {
+        const rawSimValue = (point as any)[simField] as number
+        ;(point as any)[simField] = Math.round(rawSimValue * rebaseFactor)
         point._sources[simField] = 'simulated'
         continue
       }
