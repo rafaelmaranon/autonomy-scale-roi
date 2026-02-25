@@ -185,12 +185,22 @@ export function mergeTimeline(
         const t = point.year - lastAnchorYear
         let projected: number
 
-        if (cagr !== null && cagr > 0) {
-          // CAGR-driven projection capped by TAM ceiling
+        if (cagr !== null && cagr > 0 && lastAnchorValue > 0) {
+          // CAGR-driven projection
           const cagrValue = lastAnchorValue * Math.pow(1 + cagr, t)
-          projected = Math.min(cagrValue, tamCeiling)
+
+          // Fleet capacity ceiling (only for paidTripsPerWeek)
+          let capacityCeiling = Infinity
+          if (projection && simField === 'paidTripsPerWeek'
+              && projection.newVehiclesPerYear > 0 && projection.tripsPerVehiclePerWeek > 0) {
+            const currentFleet = lastAnchorValue / projection.tripsPerVehiclePerWeek
+            const fleetAtYear = currentFleet + projection.newVehiclesPerYear * t
+            capacityCeiling = fleetAtYear * projection.tripsPerVehiclePerWeek
+          }
+
+          projected = Math.min(cagrValue, capacityCeiling, tamCeiling)
         } else {
-          // Fallback: rebased simulation growth (for metrics without CAGR data)
+          // Fallback: rebased simulation growth (negative or no-CAGR metrics)
           const rawSimValue = (point as any)[simField] as number
           projected = rawSimValue * rebaseFactor
         }

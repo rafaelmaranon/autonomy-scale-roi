@@ -142,11 +142,23 @@ export function V1Simulator() {
     return Math.pow(Number(last.value) / Number(first.value), 1 / span) - 1
   }, [anchorSplit.bindingAnchors])
 
+  // Compute full projection inputs including capacity fields from sim inputs
+  const fullProjection = useMemo(() => {
+    const profile = getProfileByName(selectedProfile)
+    const utilization = profile?.multipliers.productionUtilization ?? 80
+    const avgTripMiles = 6
+    return {
+      ...projectionInputs,
+      newVehiclesPerYear: inputs.citiesPerYear * inputs.vehiclesPerCity,
+      tripsPerVehiclePerWeek: utilization * 7 / avgTripMiles,
+    }
+  }, [projectionInputs, inputs.citiesPerYear, inputs.vehiclesPerCity, selectedProfile])
+
   // Merge simulation data with BINDING anchors only
   const mergedData = useMemo(() => {
     if (!outputs) return null
-    return mergeTimeline(outputs.yearlyData, anchorSplit.bindingAnchors, projectionInputs)
-  }, [outputs, anchorSplit.bindingAnchors, projectionInputs])
+    return mergeTimeline(outputs.yearlyData, anchorSplit.bindingAnchors, fullProjection)
+  }, [outputs, anchorSplit.bindingAnchors, fullProjection])
 
   // Get active year data for display (from merged timeline)
   const activeYearData = mergedData?.[activeYearIndex]

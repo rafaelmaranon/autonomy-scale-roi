@@ -39,12 +39,16 @@ export interface ProjectionInputs {
   earlyGrowthCAGR: number      // e.g., 1.58 = 158%
   targetMarketShare: number    // e.g., 0.35 = 35%
   globalTAM: number            // trips/week, e.g., 230_000_000
+  newVehiclesPerYear: number   // citiesPerYear * vehiclesPerCity
+  tripsPerVehiclePerWeek: number // productionUtilization * 7 / avgTripMiles
 }
 
 export const defaultProjectionInputs: ProjectionInputs = {
   earlyGrowthCAGR: 1.58,       // Auto-calculated from anchors, ~158% default
   targetMarketShare: 0.35,     // 35% market share
   globalTAM: 230_000_000,      // 230M trips/week global ride-hailing
+  newVehiclesPerYear: 15_000,  // 10 cities * 1500 vehicles
+  tripsPerVehiclePerWeek: 93.3,// 80 mi/day * 7 / 6 mi/trip
 }
 
 // Simulation outputs
