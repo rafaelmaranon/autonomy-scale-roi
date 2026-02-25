@@ -252,11 +252,11 @@ export function V1Simulator() {
                   </div>
                   <div>
                     <div className="flex justify-between items-center mb-1">
-                      <label className="text-xs font-medium text-gray-700">Ramp Time per City</label>
-                      <span className="text-sm font-bold text-gray-900">{inputs.rampTimePerCity.toFixed(1)} years</span>
+                      <label className="text-xs font-medium text-gray-700">Profit per Mile</label>
+                      <span className="text-sm font-bold text-gray-900">${inputs.profitPerMile.toFixed(2)}</span>
                     </div>
-                    <input type="range" min={0.5} max={5.0} step={0.5} value={inputs.rampTimePerCity}
-                      onChange={(e) => handleInputChange('rampTimePerCity', parseFloat(e.target.value))}
+                    <input type="range" min={0.10} max={2.00} step={0.05} value={inputs.profitPerMile}
+                      onChange={(e) => handleInputChange('profitPerMile', parseFloat(e.target.value))}
                       className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer" />
                   </div>
                 </div>
@@ -459,11 +459,11 @@ export function V1Simulator() {
                     </div>
                     <div>
                       <div className="flex justify-between items-center mb-2">
-                        <label className="text-sm font-medium text-gray-700">Ramp Time per City</label>
-                        <span className="text-sm font-bold text-gray-900">{inputs.rampTimePerCity.toFixed(1)} years</span>
+                        <label className="text-sm font-medium text-gray-700">Profit per Mile</label>
+                        <span className="text-sm font-bold text-gray-900">${inputs.profitPerMile.toFixed(2)}</span>
                       </div>
-                      <input type="range" min={0.5} max={5.0} step={0.5} value={inputs.rampTimePerCity}
-                        onChange={(e) => handleInputChange('rampTimePerCity', parseFloat(e.target.value))}
+                      <input type="range" min={0.10} max={2.00} step={0.05} value={inputs.profitPerMile}
+                        onChange={(e) => handleInputChange('profitPerMile', parseFloat(e.target.value))}
                         className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" />
                     </div>
                   </div>
