@@ -230,8 +230,9 @@ export function mergeTimeline(
     }
   }
 
-  // Post-process: smooth logistic S-curve for fleet based on realized demand
-  if (projection && projection.tripsPerVehiclePerWeek > 0 && projection.earlyGrowthCAGR > 0) {
+  // === Post-processing: demand-consistent projections ===
+  // Order matters: trips first, then fleet and miles derive from smoothed trips.
+  if (projection && projection.earlyGrowthCAGR > 0) {
     const tripAnchors = bindingAnchors
       .filter(a => a.metric === 'paid_trips_per_week')
       .sort((a, b) => a.year - b.year)
@@ -240,21 +241,50 @@ export function mergeTimeline(
       const refYear = tripAnchors[tripAnchors.length - 1].year
       const refPoint = merged.find(p => p.year === refYear)
 
-      if (refPoint && refPoint.vehiclesProduction > 0) {
-        const fleet0 = refPoint.vehiclesProduction
-        const maxRealizedTrips = Math.max(...merged.map(p => p.paidTripsPerWeek))
-        const fleetCeiling = maxRealizedTrips / projection.tripsPerVehiclePerWeek
+      if (refPoint) {
         const k = Math.log(1 + projection.earlyGrowthCAGR)
 
+        // 1) Smooth logistic S-curve for trips (replace min() kinks)
+        const trips0 = refPoint.paidTripsPerWeek
+        const tripsCeiling = Math.max(...merged.map(p => p.paidTripsPerWeek))
+        if (trips0 > 0 && tripsCeiling > trips0) {
+          for (const point of merged) {
+            if (point.year > refYear) {
+              const t = point.year - refYear
+              const logistic = tripsCeiling / (1 + ((tripsCeiling / trips0) - 1) * Math.exp(-k * t))
+              point.paidTripsPerWeek = Math.round(logistic)
+            }
+          }
+        }
+
+        // 2) Smooth logistic S-curve for fleet based on realized demand
+        if (projection.tripsPerVehiclePerWeek > 0 && refPoint.vehiclesProduction > 0) {
+          const fleet0 = refPoint.vehiclesProduction
+          const maxSmoothedTrips = Math.max(...merged.map(p => p.paidTripsPerWeek))
+          const fleetCeiling = maxSmoothedTrips / projection.tripsPerVehiclePerWeek
+
+          for (const point of merged) {
+            if (point.year > refYear) {
+              if (fleetCeiling > fleet0) {
+                const t = point.year - refYear
+                const logistic = fleetCeiling / (1 + ((fleetCeiling / fleet0) - 1) * Math.exp(-k * t))
+                point.vehiclesProduction = Math.round(logistic)
+              } else {
+                point.vehiclesProduction = Math.round(fleetCeiling)
+              }
+            }
+          }
+        }
+
+        // 3) Cumulative miles from realized trips (not independent growth)
+        const avgTripMiles = 6
+        const weeksPerYear = 52
+        let cumMiles = refPoint.cumulativeProductionMiles
         for (const point of merged) {
           if (point.year > refYear) {
-            if (fleetCeiling > fleet0) {
-              const t = point.year - refYear
-              const logistic = fleetCeiling / (1 + ((fleetCeiling / fleet0) - 1) * Math.exp(-k * t))
-              point.vehiclesProduction = Math.round(logistic)
-            } else {
-              point.vehiclesProduction = Math.round(fleetCeiling)
-            }
+            const annualMiles = point.paidTripsPerWeek * weeksPerYear * avgTripMiles
+            cumMiles += annualMiles
+            point.cumulativeProductionMiles = Math.round(cumMiles)
           }
         }
       }
