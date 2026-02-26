@@ -287,6 +287,20 @@ export function mergeTimeline(
             point.cumulativeProductionMiles = Math.round(cumMiles)
           }
         }
+
+        // 4) Net cash from realized trips (not independent growth)
+        if (projection.profitPerMile > 0) {
+          let cumCash = refPoint.cumulativeNetCash
+          for (const point of merged) {
+            if (point.year > refYear) {
+              const annualMiles = point.paidTripsPerWeek * weeksPerYear * avgTripMiles
+              const operatingProfit = annualMiles * projection.profitPerMile
+              const rdSpend = point.annualRDSpend * 1e9
+              cumCash += operatingProfit - rdSpend
+              point.cumulativeNetCash = Math.round(cumCash)
+            }
+          }
+        }
       }
     }
   }

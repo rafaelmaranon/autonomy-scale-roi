@@ -41,6 +41,7 @@ export interface ProjectionInputs {
   globalTAM: number            // trips/week, e.g., 230_000_000
   newVehiclesPerYear: number   // citiesPerYear * vehiclesPerCity
   tripsPerVehiclePerWeek: number // productionUtilization * 7 / avgTripMiles
+  profitPerMile: number           // from SimInputs, for demand-consistent net cash
 }
 
 export const defaultProjectionInputs: ProjectionInputs = {
@@ -49,6 +50,7 @@ export const defaultProjectionInputs: ProjectionInputs = {
   globalTAM: 230_000_000,      // 230M trips/week global ride-hailing
   newVehiclesPerYear: 15_000,  // 10 cities * 1500 vehicles
   tripsPerVehiclePerWeek: 93.3,// 80 mi/day * 7 / 6 mi/trip
+  profitPerMile: 0.50,          // Waymo default
 }
 
 // Simulation outputs

@@ -167,8 +167,9 @@ export function V1Simulator() {
       ...projectionInputs,
       newVehiclesPerYear: inputs.citiesPerYear * inputs.vehiclesPerCity,
       tripsPerVehiclePerWeek: anchorThroughput ?? fallbackThroughput,
+      profitPerMile: inputs.profitPerMile,
     }
-  }, [projectionInputs, inputs.citiesPerYear, inputs.vehiclesPerCity, selectedProfile, anchorThroughput])
+  }, [projectionInputs, inputs.citiesPerYear, inputs.vehiclesPerCity, selectedProfile, anchorThroughput, inputs.profitPerMile])
 
   // Merge simulation data with BINDING anchors only
   const mergedData = useMemo(() => {
@@ -252,7 +253,7 @@ export function V1Simulator() {
                     <div className="text-[11px] text-gray-400">Fleet size</div>
                   </div>
                   <div className="flex-shrink-0">
-                    <div className="text-sm font-bold text-gray-900">{(activeYearData.cumulativeTotalMiles / 1e9).toFixed(1)}B</div>
+                    <div className="text-sm font-bold text-gray-900">{(activeYearData.cumulativeProductionMiles / 1e9).toFixed(1)}B</div>
                     <div className="text-[11px] text-gray-400">Miles (cum.)</div>
                   </div>
                 </div>
