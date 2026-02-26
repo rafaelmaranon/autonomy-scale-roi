@@ -142,17 +142,33 @@ export function V1Simulator() {
     return Math.pow(Number(last.value) / Number(first.value), 1 / span) - 1
   }, [anchorSplit.bindingAnchors])
 
+  // Derive throughput from anchors: trips/week ÷ fleet at same year
+  const anchorThroughput = useMemo(() => {
+    const tripAnchors = anchorSplit.bindingAnchors
+      .filter(a => a.metric === 'paid_trips_per_week' && Number(a.value) > 0)
+      .sort((a, b) => a.year - b.year)
+    const fleetAnchors = anchorSplit.bindingAnchors
+      .filter(a => a.metric === 'fleet_size' && Number(a.value) > 0)
+      .sort((a, b) => a.year - b.year)
+    for (const trip of [...tripAnchors].reverse()) {
+      const fleet = fleetAnchors.find(f => f.year === trip.year)
+      if (fleet) return Number(trip.value) / Number(fleet.value)
+    }
+    return null
+  }, [anchorSplit.bindingAnchors])
+
   // Compute full projection inputs including capacity fields from sim inputs
   const fullProjection = useMemo(() => {
     const profile = getProfileByName(selectedProfile)
     const utilization = profile?.multipliers.productionUtilization ?? 80
     const avgTripMiles = 6
+    const fallbackThroughput = utilization * 7 / avgTripMiles
     return {
       ...projectionInputs,
       newVehiclesPerYear: inputs.citiesPerYear * inputs.vehiclesPerCity,
-      tripsPerVehiclePerWeek: utilization * 7 / avgTripMiles,
+      tripsPerVehiclePerWeek: anchorThroughput ?? fallbackThroughput,
     }
-  }, [projectionInputs, inputs.citiesPerYear, inputs.vehiclesPerCity, selectedProfile])
+  }, [projectionInputs, inputs.citiesPerYear, inputs.vehiclesPerCity, selectedProfile, anchorThroughput])
 
   // Merge simulation data with BINDING anchors only
   const mergedData = useMemo(() => {
