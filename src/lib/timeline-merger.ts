@@ -144,6 +144,8 @@ export function mergeTimeline(
 
   // For each sim field, apply anchor overrides + interpolation
   for (const [simField, anchors] of byField) {
+    // cumulativeNetCash is derived from fundamentals in post-processing (not snap/rebase)
+    if (simField === 'cumulativeNetCash') continue
     // Dedupe: take latest value per year (highest month)
     const byYear = new Map<number, number>()
     for (const a of anchors) {
@@ -288,17 +290,22 @@ export function mergeTimeline(
           }
         }
 
-        // 4) Net cash from realized trips (not independent growth)
+        // 4) Net cash from fundamentals for ALL years (prevents snap/rebase artifacts)
         if (projection.profitPerMile > 0) {
-          let cumCash = refPoint.cumulativeNetCash
+          let cumCash = 0
+          const opsStart = projection.opsRevenueStartYear ?? 0
           for (const point of merged) {
-            if (point.year > refYear) {
-              const annualMiles = point.paidTripsPerWeek * weeksPerYear * avgTripMiles
-              const operatingProfit = annualMiles * projection.profitPerMile
-              const rdSpend = point.annualRDSpend * 1e9
-              cumCash += operatingProfit - rdSpend
-              point.cumulativeNetCash = Math.round(cumCash)
+            const annualMiles = point.paidTripsPerWeek * weeksPerYear * avgTripMiles
+            // S-curve revenue ramp: 3r²−2r³ (matches sim-calculator.ts)
+            let sCurve = 0
+            if (opsStart > 0 && point.year >= opsStart) {
+              const r = Math.min(1, (point.year - opsStart) / 7)
+              sCurve = 3 * r * r - 2 * r * r * r
             }
+            const operatingProfit = annualMiles * projection.profitPerMile * sCurve
+            const rdSpend = point.annualRDSpend * 1e9
+            cumCash += operatingProfit - rdSpend
+            point.cumulativeNetCash = Math.round(cumCash)
           }
         }
       }

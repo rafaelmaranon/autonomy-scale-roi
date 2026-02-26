@@ -42,6 +42,7 @@ export interface ProjectionInputs {
   newVehiclesPerYear: number   // citiesPerYear * vehiclesPerCity
   tripsPerVehiclePerWeek: number // productionUtilization * 7 / avgTripMiles
   profitPerMile: number           // from SimInputs, for demand-consistent net cash
+  opsRevenueStartYear: number     // from SimInputs, for S-curve in net cash computation
 }
 
 export const defaultProjectionInputs: ProjectionInputs = {
@@ -51,6 +52,7 @@ export const defaultProjectionInputs: ProjectionInputs = {
   newVehiclesPerYear: 15_000,  // 10 cities * 1500 vehicles
   tripsPerVehiclePerWeek: 93.3,// 80 mi/day * 7 / 6 mi/trip
   profitPerMile: 0.50,          // Waymo default
+  opsRevenueStartYear: 2018,    // Waymo default
 }
 
 // Simulation outputs

@@ -168,8 +168,9 @@ export function V1Simulator() {
       newVehiclesPerYear: inputs.citiesPerYear * inputs.vehiclesPerCity,
       tripsPerVehiclePerWeek: anchorThroughput ?? fallbackThroughput,
       profitPerMile: inputs.profitPerMile,
+      opsRevenueStartYear: inputs.opsRevenueStartYear,
     }
-  }, [projectionInputs, inputs.citiesPerYear, inputs.vehiclesPerCity, selectedProfile, anchorThroughput, inputs.profitPerMile])
+  }, [projectionInputs, inputs.citiesPerYear, inputs.vehiclesPerCity, selectedProfile, anchorThroughput, inputs.profitPerMile, inputs.opsRevenueStartYear])
 
   // Merge simulation data with BINDING anchors only
   const mergedData = useMemo(() => {
