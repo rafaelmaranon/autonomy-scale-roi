@@ -230,6 +230,37 @@ export function mergeTimeline(
     }
   }
 
+  // Post-process: smooth logistic S-curve for fleet based on realized demand
+  if (projection && projection.tripsPerVehiclePerWeek > 0 && projection.earlyGrowthCAGR > 0) {
+    const tripAnchors = bindingAnchors
+      .filter(a => a.metric === 'paid_trips_per_week')
+      .sort((a, b) => a.year - b.year)
+
+    if (tripAnchors.length > 0) {
+      const refYear = tripAnchors[tripAnchors.length - 1].year
+      const refPoint = merged.find(p => p.year === refYear)
+
+      if (refPoint && refPoint.vehiclesProduction > 0) {
+        const fleet0 = refPoint.vehiclesProduction
+        const maxRealizedTrips = Math.max(...merged.map(p => p.paidTripsPerWeek))
+        const fleetCeiling = maxRealizedTrips / projection.tripsPerVehiclePerWeek
+        const k = Math.log(1 + projection.earlyGrowthCAGR)
+
+        for (const point of merged) {
+          if (point.year > refYear) {
+            if (fleetCeiling > fleet0) {
+              const t = point.year - refYear
+              const logistic = fleetCeiling / (1 + ((fleetCeiling / fleet0) - 1) * Math.exp(-k * t))
+              point.vehiclesProduction = Math.round(logistic)
+            } else {
+              point.vehiclesProduction = Math.round(fleetCeiling)
+            }
+          }
+        }
+      }
+    }
+  }
+
   // Mark remaining fields as simulated
   const allSimFields = new Set([...fieldMap.values()])
   for (const point of merged) {
